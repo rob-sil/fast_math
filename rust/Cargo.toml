@@ -1,0 +1,13 @@
+[package]
+name = "fast_math"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+name = "rust_fast_math"
+crate-type = ["cdylib"]
+
+[dependencies]
+pyo3 = "0.20.0"
+numpy = "0.20"
+ndarray = "0.15"
