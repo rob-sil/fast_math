@@ -13,6 +13,7 @@ jobs:
         with:
           options: "--check --verbose"
           version: "~= 23.11"
+          summary: false
       - name: Check imports (isort)
         uses: isort/isort-action@v1
 
@@ -57,4 +58,6 @@ jobs:
       - name: Build
         run: pip install . -v
       - name: Benchmark
-        run: python benchmark/benchmark.py
+        run: |
+          python benchmark/benchmark.py
+          cat benchmark.md >> $GITHUB_STEP_SUMMARY
