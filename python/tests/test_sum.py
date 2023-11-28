@@ -1,6 +1,7 @@
 from math import fsum
 
 import numpy as np
+
 import fast_math as fm
 
 
