@@ -13,6 +13,16 @@ if __name__ == "__main__":
         "rounding": lambda N: np.array(
             [2**24, 1, -(2**24)] * (N // 3), dtype=np.float32
         ),
+        "ones_2d": lambda N: np.ones(N // 5 * 5, dtype=np.float32).reshape((-1, 5)),
+        "ascending_2d": lambda N: np.arange(N // 5 * 5, dtype=np.float32).reshape(
+            (-1, 5)
+        ),
+        "ones_3d": lambda N: np.ones(N // 25 * 25, dtype=np.float32).reshape(
+            (-1, 5, 5)
+        ),
+        "ascending_3d": lambda N: np.arange(N // 25 * 25, dtype=np.float32).reshape(
+            (-1, 5, 5)
+        ),
     }
 
     fast_total = 0
@@ -40,12 +50,16 @@ if __name__ == "__main__":
             )
 
             fsum_time = timeit(
-                "func(array)", number=num_runs, globals={"func": fsum, "array": array}
+                "func(array.flatten())",
+                number=num_runs,
+                globals={"func": fsum, "array": array},
             )
             fsum_total += fsum_time
             print(
                 f"\t     fsum: {fsum_time:.3f}s ({fsum_time / fast_time:.1f}x faster)"
             )
+
+            print()
 
     with open("benchmark.md", "w") as f:
         f.write(
