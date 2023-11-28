@@ -3,15 +3,13 @@ use pyo3::prelude::*;
 use numpy::PyReadonlyArray1;
 
 mod expansion;
-use expansion::Expansion;
+mod sum;
+
+use sum::online_sum;
 
 #[pyfunction]
 fn sum_32(x: PyReadonlyArray1<f32>) -> PyResult<f32> {
-	let mut expansion = Expansion::new();
-    for &value in x.as_array() {
-        expansion.add(value)
-    }
-    Ok(expansion.into())
+	Ok(online_sum(x.as_array()))
 }
 
 #[pymodule]

@@ -28,7 +28,7 @@ impl Expansion {
         Expansion { components: vec![] }
     }
 
-    // Add a floating-point value to the expansion without rounding error.
+    /// Add a floating-point value to the expansion without rounding error.
     pub fn add(&mut self, value: f32) {
         let mut current = value;
         let mut j = 0;
@@ -63,4 +63,17 @@ impl Into<f32> for Expansion {
             0.
         }
     }
+}
+
+/// An online, accurate sum using non-overlapping expansions.
+pub fn online_sum<'a, I>(values: I) -> f32
+where
+    I: IntoIterator,
+	I::Item: Into<&'a f32>,
+{
+	let mut expansion = Expansion::new();
+    for value in values {
+        expansion.add(*value.into())
+    }
+    expansion.into()
 }

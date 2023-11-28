@@ -48,3 +48,9 @@ The Python standard library implements [`math.fsum`](https://docs.python.org/3/l
 >>> fm.sum(array)
 1.0
 ```
+
+## Algorithms
+
+Summation is based on the work of:
+1. Yong-Kang Zhu and [Wayne B. Hayes](https://www.cs.toronto.edu/~wayne/), particularly "Algorithm 908: Online Exact Summation of Floating-Point Streams" (2010).
+2. [Jonathan Shewchunk](https://people.eecs.berkeley.edu/~jrs/), particularly "Adaptive Precision Floating-Point Arithmetic and Fast Robust Geometric Predicates" (1997).
