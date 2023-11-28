@@ -39,10 +39,6 @@ The Python standard library implements [`math.fsum`](https://docs.python.org/3/l
 
 `fast_math` can be installed with [maturin](https://www.maturin.rs) by running [pip](https://pip.pypa.io/en/stable/) in the root directory.
 
-```bash
-pip install -e .
-```
-
 ## Usage
 
 ```python
