@@ -2,10 +2,11 @@ use std::convert::Into;
 
 use crate::expansion::Expansion;
 
+#[derive(Clone, Copy)]
 struct Accumulator<const N: usize> {
     highs: [f32; N],
     lows: [f32; N],
-	count: usize,
+    count: usize,
 }
 
 impl<const N: usize> Accumulator<N> {
@@ -14,7 +15,7 @@ impl<const N: usize> Accumulator<N> {
         Accumulator {
             highs: [0_f32; N],
             lows: [0_f32; N],
-			count: 0,
+            count: 0,
         }
     }
 
@@ -28,18 +29,18 @@ impl<const N: usize> Accumulator<N> {
         self.highs[j] = high;
         self.lows[j] += low;
 
-		self.count += 1;
+        self.count += 1;
     }
 
     /// Add the value of the accumulator to the sink.
     fn drain_into(&mut self, sink: &mut Accumulator<N>) {
-		for value in self.highs {
+        for value in self.highs {
             if value != 0_f32 {
                 sink.add(value);
             }
         }
 
-		for value in self.lows {
+        for value in self.lows {
             if value != 0_f32 {
                 sink.add(value);
             }
@@ -47,12 +48,12 @@ impl<const N: usize> Accumulator<N> {
 
         self.highs.fill(0_f32);
         self.lows.fill(0_f32);
-		self.count = 0;
+        self.count = 0;
     }
 
-	fn count(&self) -> usize {
-		self.count
-	}
+    fn count(&self) -> usize {
+        self.count
+    }
 }
 
 impl<const N: usize> From<&mut Accumulator<N>> for Expansion {
@@ -74,31 +75,54 @@ impl<const N: usize> From<&mut Accumulator<N>> for Expansion {
 }
 
 /// An online, accurate sum based on Zhu and Hayes' OnlineExactSum.
-pub fn online_sum<'a, I>(values: I) -> f32
+/// Uses N+1 accumulators to add faster
+pub fn online_sum<'a, I, const N: usize>(values: I) -> f32
 where
     I: IntoIterator,
     I::Item: Into<&'a f32>,
 {
-    let mut accumulator0 = Accumulator::<{ (f32::MAX_EXP - f32::MIN_EXP + 1) as usize }>::new();
-    let mut accumulator1 = Accumulator::<{ (f32::MAX_EXP - f32::MIN_EXP + 1) as usize }>::new();
+    // Pointers rotate the first accumulator with the swap accumulator
+    let mut swap0 = Accumulator::<{ (f32::MAX_EXP - f32::MIN_EXP + 1) as usize }>::new();
+    let mut swap1 = Accumulator::<{ (f32::MAX_EXP - f32::MIN_EXP + 1) as usize }>::new();
+    let mut active = &mut swap0;
+    let mut backup = &mut swap1;
 
-    // Pointers rotate the first accumulator
-    let mut backup = &mut accumulator0;
-    let mut active = &mut accumulator1;
+	// Additional accumulators to speed up summation
+    let mut accumulators =
+        [Accumulator::<{ (f32::MAX_EXP - f32::MIN_EXP + 1) as usize }>::new(); N];
 
     // We can only add so many values before needing a reset
     let max_active_count = 2_usize.pow(22);
 
-    for value in values {
-        active.add(*value.into());
+    let mut values_iter = values.into_iter();
+    let mut chunk = [0_f32; N];
+    while let Some(value1) = values_iter.next() {
+        for i in 0..chunk.len() {
+            chunk[i] = match values_iter.next() {
+                Some(value) => *value.into(),
+                None => 0.,
+            }
+        }
+
+        active.add(*value1.into());
+        for i in 0..N {
+            accumulators[i].add(chunk[i])
+        }
 
         if active.count() > max_active_count {
             active.drain_into(backup);
-
+            for mut accumulator in accumulators {
+				accumulator.drain_into(backup)
+            }
             (active, backup) = (backup, active);
         }
     }
 
-    let expansion: Expansion = active.into();
+    active.drain_into(backup);
+	for mut accumulator in accumulators {
+		accumulator.drain_into(backup)
+	}
+
+    let expansion: Expansion = backup.into();
     expansion.into()
 }

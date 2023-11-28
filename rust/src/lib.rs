@@ -9,7 +9,7 @@ use sum::online_sum;
 
 #[pyfunction]
 fn sum_32(x: PyReadonlyArray1<f32>) -> PyResult<f32> {
-	Ok(online_sum(x.as_array()))
+	Ok(online_sum::<_, 7>(x.as_array()))
 }
 
 #[pymodule]

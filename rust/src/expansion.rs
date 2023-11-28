@@ -64,16 +64,3 @@ impl Into<f32> for Expansion {
         }
     }
 }
-
-/// An online, accurate sum using non-overlapping expansions.
-pub fn online_sum<'a, I>(values: I) -> f32
-where
-    I: IntoIterator,
-	I::Item: Into<&'a f32>,
-{
-	let mut expansion = Expansion::new();
-    for value in values {
-        expansion.add(*value.into())
-    }
-    expansion.into()
-}
