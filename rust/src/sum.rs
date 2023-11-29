@@ -76,52 +76,52 @@ impl<const N: usize> From<&mut Accumulator<N>> for Expansion {
 
 /// An online, accurate sum based on Zhu and Hayes' OnlineExactSum.
 /// Uses N+1 accumulators to add faster
-pub fn online_sum<'a, I, const N: usize>(values: I) -> f32
+pub fn online_sum<'a, I, T, const A: usize, const N: usize>(values: I) -> f32
 where
     I: IntoIterator,
-    I::Item: Into<&'a f32>,
+    I::Item: Into<&'a T>,
+    T: Into<f32> + 'a + Copy,
 {
     // Pointers rotate the first accumulator with the swap accumulator
-    let mut swap0 = Accumulator::<{ (f32::MAX_EXP - f32::MIN_EXP + 1) as usize }>::new();
-    let mut swap1 = Accumulator::<{ (f32::MAX_EXP - f32::MIN_EXP + 1) as usize }>::new();
+    let mut swap0 = Accumulator::<N>::new();
+    let mut swap1 = Accumulator::<N>::new();
     let mut active = &mut swap0;
     let mut backup = &mut swap1;
 
-	// Additional accumulators to speed up summation
-    let mut accumulators =
-        [Accumulator::<{ (f32::MAX_EXP - f32::MIN_EXP + 1) as usize }>::new(); N];
+    // Additional accumulators to speed up summation
+    let mut accumulators = [Accumulator::<N>::new(); A];
 
     // We can only add so many values before needing a reset
     let max_active_count = 2_usize.pow(22);
 
     let mut values_iter = values.into_iter();
-    let mut chunk = [0_f32; N];
+    let mut chunk = [0_f32; A];
     while let Some(value1) = values_iter.next() {
         for i in 0..chunk.len() {
             chunk[i] = match values_iter.next() {
-                Some(value) => *value.into(),
+                Some(value) => (*value.into()).into(),
                 None => 0.,
             }
         }
 
-        active.add(*value1.into());
-        for i in 0..N {
+        active.add((*value1.into()).into());
+        for i in 0..A {
             accumulators[i].add(chunk[i])
         }
 
         if active.count() > max_active_count {
             active.drain_into(backup);
             for mut accumulator in accumulators {
-				accumulator.drain_into(backup)
+                accumulator.drain_into(backup)
             }
             (active, backup) = (backup, active);
         }
     }
 
     active.drain_into(backup);
-	for mut accumulator in accumulators {
-		accumulator.drain_into(backup)
-	}
+    for mut accumulator in accumulators {
+        accumulator.drain_into(backup)
+    }
 
     let expansion: Expansion = backup.into();
     expansion.into()

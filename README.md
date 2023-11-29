@@ -1,6 +1,6 @@
 # fast_math
 
-Fast and accurate floating point summation for NumPy arrays.
+Fast and accurate floating-point summation for NumPy arrays.
 
 ## Why?
 
