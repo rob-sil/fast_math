@@ -74,6 +74,13 @@ impl<const N: usize> From<&mut Accumulator<N>> for Expansion {
     }
 }
 
+impl<const N: usize> From<&mut Accumulator<N>> for f32 {
+    fn from(accumulator: &mut Accumulator<N>) -> f32 {
+        let expansion: Expansion = accumulator.into();
+		expansion.into()
+    }
+}
+
 /// An online, accurate sum based on Zhu and Hayes' OnlineExactSum.
 /// Uses N+1 accumulators to add faster
 pub fn online_sum<'a, I, T, const A: usize, const N: usize>(values: I) -> f32
@@ -123,6 +130,5 @@ where
         accumulator.drain_into(backup)
     }
 
-    let expansion: Expansion = backup.into();
-    expansion.into()
+    backup.into()
 }

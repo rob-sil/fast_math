@@ -3,6 +3,7 @@ use std::convert::{From, Into};
 /// Add two numbers with the Fast2Sum algorithm
 ///
 /// Returns the sum along with the rounding error.
+#[inline(always)]
 fn fast2sum(a: f32, b: f32) -> (f32, f32) {
     if a.abs() < b.abs() {
         let high = b + a;

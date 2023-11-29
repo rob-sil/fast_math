@@ -4,7 +4,7 @@ use pyo3::{exceptions::PyValueError, prelude::*};
 use numpy::{dtype, Element, PyArrayDescr, PyReadonlyArray, PyReadonlyArrayDyn};
 
 mod expansion;
-mod sum;
+mod accumulator;
 
 const F32_EXPONENTS: usize = (f32::MAX_EXP - f32::MIN_EXP + 1) as usize;
 
@@ -18,13 +18,13 @@ where
     };
 
     match ndims {
-        1 => Ok(sum::online_sum::<_, T, 7, F32_EXPONENTS>(
+        1 => Ok(accumulator::online_sum::<_, T, 7, F32_EXPONENTS>(
             PyReadonlyArray::<T, Ix1>::extract(array)?.as_array(),
         )),
-        2 => Ok(sum::online_sum::<_, T, 7, F32_EXPONENTS>(
+        2 => Ok(accumulator::online_sum::<_, T, 7, F32_EXPONENTS>(
             PyReadonlyArray::<T, Ix2>::extract(array)?.as_array(),
         )),
-        _ => Ok(sum::online_sum::<_, T, 7, F32_EXPONENTS>(
+        _ => Ok(accumulator::online_sum::<_, T, 7, F32_EXPONENTS>(
             PyReadonlyArray::<T, IxDyn>::extract(array)?.as_array(),
         )),
     }
