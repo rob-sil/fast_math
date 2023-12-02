@@ -1,16 +1,18 @@
+use std::fmt::Display;
+
 use ndarray::{Ix1, Ix2, IxDyn};
 use pyo3::{exceptions::PyValueError, prelude::*};
 
 use numpy::{dtype, Element, PyArrayDescr, PyReadonlyArray, PyReadonlyArrayDyn};
 
-mod expansion;
 mod accumulator;
+mod expansion;
 
-const F32_EXPONENTS: usize = (f32::MAX_EXP - f32::MIN_EXP + 1) as usize;
+const F32_EXPONENTS: usize = (f32::MAX_EXP - f32::MIN_EXP + 3) as usize;
 
 fn sum_32_typed<'a, T>(array: &PyAny) -> PyResult<f32>
 where
-    T: Into<f32> + Element + Copy,
+    T: Into<f32> + Element + Copy + Display,
 {
     let ndims = match PyReadonlyArrayDyn::<T>::extract(array) {
         Ok(a) => a.shape().len(),
@@ -18,15 +20,33 @@ where
     };
 
     match ndims {
-        1 => Ok(accumulator::online_sum::<_, T, 7, F32_EXPONENTS>(
-            PyReadonlyArray::<T, Ix1>::extract(array)?.as_array(),
-        )),
-        2 => Ok(accumulator::online_sum::<_, T, 7, F32_EXPONENTS>(
-            PyReadonlyArray::<T, Ix2>::extract(array)?.as_array(),
-        )),
-        _ => Ok(accumulator::online_sum::<_, T, 7, F32_EXPONENTS>(
-            PyReadonlyArray::<T, IxDyn>::extract(array)?.as_array(),
-        )),
+        1 => {
+            let array = PyReadonlyArray::<T, Ix1>::extract(array)?;
+            match array.as_slice() {
+                Ok(s) => Ok(accumulator::online_sum::<_, T, 7, F32_EXPONENTS>(s)),
+                Err(_) => Ok(accumulator::online_sum::<_, T, 7, F32_EXPONENTS>(
+                    array.as_array(),
+                )),
+            }
+        },
+        2 => {
+            let array = PyReadonlyArray::<T, Ix2>::extract(array)?;
+            match array.as_slice() {
+                Ok(s) => Ok(accumulator::online_sum::<_, T, 7, F32_EXPONENTS>(s)),
+                Err(_) => Ok(accumulator::online_sum::<_, T, 7, F32_EXPONENTS>(
+                    array.as_array(),
+                )),
+            }
+        },
+        _ => {
+            let array = PyReadonlyArray::<T, IxDyn>::extract(array)?;
+            match array.as_slice() {
+                Ok(s) => Ok(accumulator::online_sum::<_, T, 7, F32_EXPONENTS>(s)),
+                Err(_) => Ok(accumulator::online_sum::<_, T, 7, F32_EXPONENTS>(
+                    array.as_array(),
+                )),
+            }
+        },
     }
 }
 
