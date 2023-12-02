@@ -2,6 +2,7 @@ from math import fsum
 
 import numpy as np
 import pytest
+from numpy.testing import assert_array_almost_equal
 
 import fast_math as fm
 
@@ -79,3 +80,13 @@ def test_dtypes_unsafe(dtype):
 
     with pytest.raises(ValueError):
         fm.sum(array, dtype=np.float32)
+
+
+def test_axis():
+    array = np.ones(10_000, dtype=np.float32).reshape((10, 20, -1))
+
+    for axis in range(array.ndim):
+        assert_array_almost_equal(
+            np.sum(array, axis=axis),
+            fm.sum(array, axis=axis),
+        )

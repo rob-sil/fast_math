@@ -1,6 +1,6 @@
 use std::fmt::Display;
 
-use ndarray::{Ix1, Ix2, IxDyn};
+use ndarray::{Ix1, Ix2, IxDyn, Dimension};
 use pyo3::{exceptions::PyValueError, prelude::*};
 
 use numpy::{dtype, Element, PyArrayDescr, PyReadonlyArray, PyReadonlyArrayDyn};
@@ -28,7 +28,7 @@ where
                     array.as_array(),
                 )),
             }
-        },
+        }
         2 => {
             let array = PyReadonlyArray::<T, Ix2>::extract(array)?;
             match array.as_slice() {
@@ -37,7 +37,7 @@ where
                     array.as_array(),
                 )),
             }
-        },
+        }
         _ => {
             let array = PyReadonlyArray::<T, IxDyn>::extract(array)?;
             match array.as_slice() {
@@ -46,7 +46,7 @@ where
                     array.as_array(),
                 )),
             }
-        },
+        }
     }
 }
 
@@ -76,7 +76,7 @@ fn sum_32(py: Python, array: &PyAny) -> PyResult<f32> {
                 )))
             }
         }
-        Err(_) => Err(PyValueError::new_err("No dtype provided.")),
+        Err(e) => Err(e),
     }
 }
 

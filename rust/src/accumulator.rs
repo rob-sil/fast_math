@@ -32,6 +32,13 @@ impl<const N: usize> Accumulator<N> {
         self.count += 1;
     }
 
+    // Reset the accumulator to zero
+    fn clear(&mut self) {
+        self.highs.fill(0_f32);
+        self.lows.fill(0_f32);
+        self.count = 0;
+    }
+
     /// Add the value of the accumulator to the sink.
     fn drain_into(&mut self, sink: &mut Accumulator<N>) {
         for value in self.highs {
@@ -46,9 +53,7 @@ impl<const N: usize> Accumulator<N> {
             }
         }
 
-        self.highs.fill(0_f32);
-        self.lows.fill(0_f32);
-        self.count = 0;
+        self.clear();
     }
 
     fn count(&self) -> usize {
@@ -77,7 +82,7 @@ impl<const N: usize> From<&mut Accumulator<N>> for Expansion {
 impl<const N: usize> From<&mut Accumulator<N>> for f32 {
     fn from(accumulator: &mut Accumulator<N>) -> f32 {
         let expansion: Expansion = accumulator.into();
-		expansion.into()
+        expansion.into()
     }
 }
 
