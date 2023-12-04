@@ -34,14 +34,9 @@ def sum(
     if axis is not None:
         out_shape = (*array.shape[:axis], *array.shape[axis + 1 :])
         out = np.zeros(out_shape, dtype=dtype)
-        array = np.moveaxis(array, axis, -1)
 
-        for index in np.ndindex(out.shape):
-            out[index] = np.float32(sum_32(array[index]))
-
-        if out.shape == (1,):
-            out = out[0]
+        out = sum_32(array, axis, out)
     else:
-        out = sum_32(array)
+        out = sum_32(array, None, None)
 
     return np.float32(out)
