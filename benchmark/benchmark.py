@@ -38,9 +38,21 @@ benchmarks: List[Tuple[str, str]] = [
         "np.arange({N} // 25 * 25, dtype=np.float32).reshape((-1, 5, 5))",
         "sum(array)",
     ),
+    (
+        "np.ones({N} // 5 * 5, dtype=np.float32).reshape((5, -1))",
+        "sum(array, axis=0)",
+    ),
+    (
+        "np.arange({N} // 5 * 5, dtype=np.float32).reshape((5, -1))",
+        "sum(array, axis=0)",
+    ),
+    (
+        "np.arange({N} // 25 * 25, dtype=np.float32).reshape((5, 5, -1))",
+        "sum(array, axis=0)",
+    ),
 ]
 
-sizes = (10, 100, 1_000, 10_000, 100_000, 1_000_000, 10_000_000)
+sizes = (10, 100, 1_000, 10_000, 100_000, 1_000_000)
 
 
 def time_format(seconds) -> str:
@@ -58,24 +70,28 @@ def time_format(seconds) -> str:
 if __name__ == "__main__":
     results = []
 
-    num_runs = 1_000
+    num_runs = 100
     for setup_format, statement in benchmarks:
         for N in sizes:
             setup = "array = " + setup_format.format(N=N)
 
             print(f"> {setup}\n> {statement}")
 
-            fast_time = timeit(
-                statement, setup, number=num_runs, globals={"sum": fm.sum, "np": np}
+            fast_time = (
+                timeit(
+                    statement, setup, number=num_runs, globals={"sum": fm.sum, "np": np}
+                )
+                / num_runs
             )
-            print(f"\tfast_math: {fast_time:.3f}s")
+            print(f"\tfast_math: {time_format(fast_time)}")
 
-            numpy_time = timeit(
-                statement, setup, number=num_runs, globals={"sum": np.sum, "np": np}
+            numpy_time = (
+                timeit(
+                    statement, setup, number=num_runs, globals={"sum": np.sum, "np": np}
+                )
+                / num_runs
             )
-            print(
-                f"\t    numpy: {numpy_time:.3f}s ({fast_time / numpy_time:.1f}x slower)"
-            )
+            print(f"\t    numpy: {time_format(numpy_time)}")
 
             results.append(
                 {
