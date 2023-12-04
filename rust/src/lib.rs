@@ -1,6 +1,6 @@
 use std::fmt::Display;
 
-use ndarray::{Ix1, Ix2, IxDyn, Dimension};
+use ndarray::{Ix1, Ix2, IxDyn};
 use pyo3::{exceptions::PyValueError, prelude::*};
 
 use numpy::{dtype, Element, PyArrayDescr, PyReadonlyArray, PyReadonlyArrayDyn};
