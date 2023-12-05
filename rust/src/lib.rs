@@ -43,8 +43,9 @@ where
 
     let mem_size = mem::size_of::<T>() as isize;
 
-	let mut axis_stride = strides[axis as usize] / mem_size;
+    let mut axis_stride = strides[axis as usize] / mem_size;
     let mut ptr = array.data() as *mut T;
+
 	// Need to make sure axis_stride is positive for ArrayView construction
     if axis_stride < 0 {
         ptr = unsafe { ptr.offset(axis_stride * (array.shape()[axis as usize] as isize - 1)) };
@@ -67,10 +68,12 @@ where
 
         let shape: Shape<Ix1> = array.shape()[axis as usize].into_dimension().into();
         let to_sum = unsafe {
-            ArrayView::from_shape_ptr(shape.strides(Ix1(axis_stride as usize)), ptr.offset(offset))
+            ArrayView::<T, Ix1>::from_shape_ptr(
+                shape.strides(Ix1(axis_stride as usize)),
+                ptr.offset(offset),
+            )
         };
-
-        *value = accumulator::online_sum::<_, T, 7, F32_EXPONENTS>(to_sum);
+        *value = expansion::online_sum(to_sum);
     }
 
     Ok(SumReturn::Array(out))

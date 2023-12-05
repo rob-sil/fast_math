@@ -65,3 +65,20 @@ impl Into<f32> for Expansion {
         }
     }
 }
+
+pub fn online_sum<'a, I, T>(values: I) -> f32
+where
+    I: IntoIterator,
+    I::Item: Into<&'a T>,
+    T: Into<f32> + 'a + Copy,
+{
+	let mut expansion = Expansion::new();
+	for value in values {
+		let &value_t = value.into();
+		let value_f32: f32 = value_t.into();
+		if value_f32 != 0_f32 {
+			expansion.add(value_f32);
+		}
+	}
+	expansion.into()
+}
