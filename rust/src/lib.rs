@@ -1,6 +1,8 @@
 use std::{fmt::Display, mem};
 
-use ndarray::{ArrayView, Dimension, IntoDimension, Ix1, Ix2, IxDyn, Shape, ShapeBuilder};
+use ndarray::{
+    ArrayView, Dimension, IntoDimension, Ix1, Ix2, IxDyn, Shape, ShapeBuilder,
+};
 use pyo3::{exceptions::PyValueError, prelude::*};
 
 use numpy::{dtype, Element, PyArray, PyArrayDescr, PyReadonlyArray, PyReadonlyArrayDyn};
@@ -16,21 +18,38 @@ enum SumReturn<'a> {
     Array(&'a PyAny),
 }
 
-// Determine iterator type
-fn sum_with_dimension<'a, T, D>(array: PyReadonlyArray<'a, T, D>) -> PyResult<SumReturn>
+/// Sum all the elements of an array into a single float.
+///
+/// This function chooses:
+///
+/// 1. Which summation algorithm to use. Zhu and Hayes' OnlineExactSum is amazingly
+/// fast, but requires a large, fixed amount of memory to start. On smaller arrays,
+/// overall performance is faster for one of Shewchuk's algorithms.
+/// 2. Which `IntoIterator` implementation to use. If the array is contiguous, then
+/// adding up elements of a slice is possible and faster than iterating over the view.
+fn sum_full_array<'a, T, D>(array: PyReadonlyArray<'a, T, D>) -> PyResult<SumReturn>
 where
     T: Into<f32> + Element + Copy + Display,
     D: Dimension,
 {
-    let value = match array.as_slice() {
-        Ok(s) => accumulator::online_sum::<_, T, 7, F32_EXPONENTS>(s),
-        Err(_) => accumulator::online_sum::<_, T, 7, F32_EXPONENTS>(array.as_array()),
+    let value = if array.len() < 1024 {
+        // Shewchuk's approach has low overhead and is fast for small arrays
+        match array.as_slice() {
+            Ok(s) => expansion::online_sum::<_, T>(s),
+            Err(_) => expansion::online_sum::<_, T>(array.as_array()),
+        }
+    } else {
+        // Zhu and Hayes' OnlineExactSum has higher overhead to start
+        match array.as_slice() {
+            Ok(s) => accumulator::online_sum::<_, T, 7, F32_EXPONENTS>(s),
+            Err(_) => accumulator::online_sum::<_, T, 7, F32_EXPONENTS>(array.as_array()),
+        }
     };
     Ok(SumReturn::Float(value))
 }
 
-// Handle dimensions
-fn sum_axis_with_dimension<'py, T, D>(
+/// Sum an array along an axis, filling the values of `out`.
+fn sum_along_axis<'py, T, D>(
     array: PyReadonlyArray<'py, T, D>,
     axis: u32,
     out: &'py PyAny,
@@ -39,6 +58,8 @@ where
     T: Into<f32> + Element + Copy + Display,
     D: Dimension,
 {
+    let out = out.downcast::<PyArray<f32, D::Smaller>>()?;
+
     let strides = array.strides();
 
     let mem_size = mem::size_of::<T>() as isize;
@@ -46,13 +67,11 @@ where
     let mut axis_stride = strides[axis as usize] / mem_size;
     let mut ptr = array.data() as *mut T;
 
-	// Need to make sure axis_stride is positive for ArrayView construction
+    // Need to make sure axis_stride is positive for ArrayView construction
     if axis_stride < 0 {
         ptr = unsafe { ptr.offset(axis_stride * (array.shape()[axis as usize] as isize - 1)) };
         axis_stride = -axis_stride;
     }
-
-    let out = out.downcast::<PyArray<f32, D::Smaller>>()?;
 
     let mut out_view = unsafe { out.as_array_mut() };
     for (index, value) in out_view.indexed_iter_mut() {
@@ -73,13 +92,28 @@ where
                 ptr.offset(offset),
             )
         };
-        *value = expansion::online_sum(to_sum);
+        *value = if to_sum.len() < 1024 {
+            expansion::online_sum(to_sum)
+        } else {
+            accumulator::online_sum::<_, _, 7, F32_EXPONENTS>(to_sum)
+        };
     }
 
     Ok(SumReturn::Array(out))
 }
 
-// Assigns a dimension to the array
+/// Sums an array of a known type into a 32-bit float result
+///
+/// This function has two responsibilities.
+///
+///  - First, it determines the dimension of the input array, which is enough
+/// to represent the Python object as a Rust `PyReadonlyArray` (assuming
+/// `array` is of type `T`).
+///
+///  - Second, this function splits by-axis summation from full-array
+/// summation.
+///
+/// This function also handles
 fn sum_with_type<'py, T>(
     array: &'py PyAny,
     axis: Option<u32>,
@@ -103,23 +137,28 @@ where
             };
 
             match ndim {
-                1 => sum_axis_with_dimension(PyReadonlyArray::<T, Ix1>::extract(array)?, axis, out),
-                2 => sum_axis_with_dimension(PyReadonlyArray::<T, Ix2>::extract(array)?, axis, out),
-                _ => {
-                    sum_axis_with_dimension(PyReadonlyArray::<T, IxDyn>::extract(array)?, axis, out)
-                }
+                1 => sum_along_axis(PyReadonlyArray::<T, Ix1>::extract(array)?, axis, out),
+                2 => sum_along_axis(PyReadonlyArray::<T, Ix2>::extract(array)?, axis, out),
+                _ => sum_along_axis(PyReadonlyArray::<T, IxDyn>::extract(array)?, axis, out),
             }
         }
     } else {
         match ndim {
-            1 => sum_with_dimension(PyReadonlyArray::<T, Ix1>::extract(array)?),
-            2 => sum_with_dimension(PyReadonlyArray::<T, Ix2>::extract(array)?),
-            _ => sum_with_dimension(PyReadonlyArray::<T, IxDyn>::extract(array)?),
+            1 => sum_full_array(PyReadonlyArray::<T, Ix1>::extract(array)?),
+            2 => sum_full_array(PyReadonlyArray::<T, Ix2>::extract(array)?),
+            _ => sum_full_array(PyReadonlyArray::<T, IxDyn>::extract(array)?),
         }
     }
 }
 
-// Determine an input type for the array
+/// Main function for summing 32-bit float data.
+///
+/// This function takes inputs from PyO3 and finds the type of the input
+/// array `array`. Many valid NumPy numeric types cannot safely be cast
+/// to 32-bit floats without possible loss (e.g., float64/f64 or int32/f32).
+///
+/// For valid array types, the sum moves on to the appropriate version of
+/// `sum_with_type`.
 #[pyfunction]
 fn sum_32<'py>(
     py: Python,
