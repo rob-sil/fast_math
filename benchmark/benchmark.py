@@ -194,46 +194,60 @@ if __name__ == "__main__":
 
     markdown = "# Benchmark Results\n"
 
-    markdown += "| Array Size | `fast_math` | NumPy | Slowdown |\n"
-    markdown += "| -: | -: | -: | -: |\n"
+    markdown += "| Array Size | `fast_math` | NumPy | Slowdown | Best | Worst |\n"
+    markdown += "| -: | -: | -: | -: | -: | -: |\n"
     for N in sizes:
-        fast_time = np.mean(
+        fast_results = np.array(
             [result["fast_math"] for result in results if result["N"] == N]
         )
-        numpy_time = np.mean(
+        fast_time = fast_results.mean()
+
+        numpy_results = np.array(
             [result["numpy"] for result in results if result["N"] == N]
         )
+        numpy_time = numpy_results.mean()
+
+        best_ratio = (fast_results / numpy_results).min()
+        worst_ratio = (fast_results / numpy_results).max()
 
         markdown += (
             f"| {N:,} | {time_format(fast_time)} | {time_format(numpy_time)} "
-            f"| {fast_time / numpy_time:.1f}x |\n"
+            f"| {fast_time / numpy_time:.1f}x "
+            f"| {best_ratio:.1f}x | {worst_ratio:.1f}x |\n"
         )
 
     for tag_name, tag_values in seen_tags.items():
         markdown += "\n## Results: " + tag_name + "\n"
 
-        markdown += f"| {tag_name} | `fast_math` | NumPy | Slowdown |\n"
-        markdown += "| -: | -: | -: | -: |\n"
+        markdown += f"| {tag_name} | `fast_math` | NumPy | Slowdown | Best | Worst |\n"
+        markdown += "| -: | -: | -: | -: | -: | -: |\n"
 
         for tag_value in sorted(tag_values):
-            fast_time = np.mean(
+            fast_results = np.array(
                 [
                     result["fast_math"]
                     for result in results
                     if result.get(tag_name, None) == tag_value
                 ]
             )
-            numpy_time = np.mean(
+            fast_time = fast_results.mean()
+
+            numpy_results = np.array(
                 [
                     result["numpy"]
                     for result in results
                     if result.get(tag_name, None) == tag_value
                 ]
             )
+            numpy_time = numpy_results.mean()
+
+            best_ratio = (fast_results / numpy_results).min()
+            worst_ratio = (fast_results / numpy_results).max()
 
             markdown += (
                 f"| {tag_value} | {time_format(fast_time)} | {time_format(numpy_time)} "
-                f"| {fast_time / numpy_time:.1f}x |\n"
+                f"| {fast_time / numpy_time:.1f}x "
+                f"| {best_ratio:.1f}x | {worst_ratio:.1f}x |\n"
             )
 
     with open("benchmark.md", "w") as f:

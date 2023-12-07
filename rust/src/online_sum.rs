@@ -1,21 +1,21 @@
 pub trait OnlineSumAlgorithm<const N: usize>: Sized {
-	/// Create a new instance of this algorithm
+    /// Create a new instance of this algorithm
     fn new() -> Self;
 
-	/// Add a single float value
+    /// Add a single float value
     fn add(&mut self, value: f32);
 
-	/// Get the final value of the sum as a float
-	fn finalize(self) -> f32;
+    /// Get the final value of the sum as a float
+    fn finalize(self) -> f32;
 
-	/// Add multiple elements at once
+    /// Add multiple elements at once
     fn add_array(&mut self, values: &[f32; N]) {
         for &value in values {
             self.add(value);
         }
     }
 
-	/// Sum up values, using the algorithm
+    /// Sum up values, using the algorithm
     fn online_sum<'a, I, T>(values: I) -> f32
     where
         I: IntoIterator,

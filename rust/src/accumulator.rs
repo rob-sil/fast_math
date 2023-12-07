@@ -80,12 +80,11 @@ impl<const N: usize, const A: usize> OnlineSumAlgorithm<A> for MultiAccumulator<
     fn add(&mut self, value: f32) {
         let (first, rest) = self.accumulators.split_at_mut(1);
 
-        let mut active = &mut first[0];
-        let mut backup = &mut self.swap;
-        if self.swapped {
-            active = &mut self.swap;
-            backup = &mut first[0];
-        }
+        let (active, backup) = if self.swapped {
+            (&mut self.swap, &mut first[0])
+        } else {
+            (&mut first[0], &mut self.swap)
+        };
 
         active.add(value);
 
