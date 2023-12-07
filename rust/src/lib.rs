@@ -8,6 +8,7 @@ mod accumulator;
 mod expansion;
 mod online_sum;
 
+use accumulator::MultiAccumulator;
 use expansion::Expansion;
 use online_sum::OnlineSumAlgorithm;
 
@@ -42,8 +43,8 @@ where
     } else {
         // Zhu and Hayes' OnlineExactSum has higher overhead to start
         match array.as_slice() {
-            Ok(s) => accumulator::online_sum::<_, T, 7, F32_EXPONENTS>(s),
-            Err(_) => accumulator::online_sum::<_, T, 7, F32_EXPONENTS>(array.as_array()),
+            Ok(s) => MultiAccumulator::<F32_EXPONENTS, 8>::online_sum(s),
+            Err(_) => MultiAccumulator::<F32_EXPONENTS, 8>::online_sum(array.as_array()),
         }
     };
     Ok(SumReturn::Float(value))
@@ -96,7 +97,7 @@ where
         *value = if to_sum.len() < 1024 {
             Expansion::online_sum(to_sum)
         } else {
-            accumulator::online_sum::<_, _, 7, F32_EXPONENTS>(to_sum)
+            MultiAccumulator::<F32_EXPONENTS, 8>::online_sum(to_sum)
         };
     }
 

@@ -1,7 +1,5 @@
-use std::convert::Into;
-
-use crate::online_sum::OnlineSumAlgorithm;
 use crate::expansion::Expansion;
+use crate::online_sum::OnlineSumAlgorithm;
 
 #[derive(Clone, Copy)]
 struct Accumulator<const N: usize> {
@@ -63,79 +61,89 @@ impl<const N: usize> Accumulator<N> {
     }
 }
 
-impl<const N: usize> From<&mut Accumulator<N>> for Expansion {
-    fn from(accumulator: &mut Accumulator<N>) -> Expansion {
-        let mut expansion = Expansion::new();
-        for value in accumulator.highs {
-            if value != 0_f32 {
-                expansion.add(value);
-            }
-        }
-        for value in accumulator.lows {
-            if value != 0_f32 {
-                expansion.add(value);
-            }
-        }
-
-        expansion
-    }
+/// A summation algorithm that uses `A` accumulators in parallel
+pub struct MultiAccumulator<const N: usize, const A: usize> {
+    accumulators: [Accumulator<N>; A],
+    swap: Accumulator<N>,
+    swapped: bool,
 }
 
-impl<const N: usize> From<&mut Accumulator<N>> for f32 {
-    fn from(accumulator: &mut Accumulator<N>) -> f32 {
-        let expansion: Expansion = accumulator.into();
-        expansion.finalize()
+impl<const N: usize, const A: usize> OnlineSumAlgorithm<A> for MultiAccumulator<N, A> {
+    fn new() -> Self {
+        MultiAccumulator {
+            accumulators: [Accumulator::<N>::new(); A],
+            swap: Accumulator::<N>::new(),
+            swapped: true,
+        }
     }
-}
 
-/// An online, accurate sum based on Zhu and Hayes' OnlineExactSum.
-/// Uses N+1 accumulators to add faster
-pub fn online_sum<'a, I, T, const A: usize, const N: usize>(values: I) -> f32
-where
-    I: IntoIterator,
-    I::Item: Into<&'a T>,
-    T: Into<f32> + 'a + Copy,
-{
-    // Pointers rotate the first accumulator with the swap accumulator
-    let mut swap0 = Accumulator::<N>::new();
-    let mut swap1 = Accumulator::<N>::new();
-    let mut active = &mut swap0;
-    let mut backup = &mut swap1;
+    fn add(&mut self, value: f32) {
+        let (first, rest) = self.accumulators.split_at_mut(1);
 
-    // Additional accumulators to speed up summation
-    let mut accumulators = [Accumulator::<N>::new(); A];
-
-    // We can only add so many values before needing a reset
-    let max_active_count = 2_usize.pow(22);
-
-    let mut values_iter = values.into_iter();
-    let mut chunk = [0_f32; A];
-    while let Some(value1) = values_iter.next() {
-        for i in 0..chunk.len() {
-            chunk[i] = match values_iter.next() {
-                Some(value) => (*value.into()).into(),
-                None => 0.,
-            }
+        let mut active = &mut first[0];
+        let mut backup = &mut self.swap;
+        if self.swapped {
+            active = &mut self.swap;
+            backup = &mut first[0];
         }
 
-        active.add((*value1.into()).into());
-        for i in 0..A {
-            accumulators[i].add(chunk[i])
-        }
+        active.add(value);
 
-        if active.count() > max_active_count {
+        if active.count() > 2_usize.pow(22) {
             active.drain_into(backup);
-            for mut accumulator in accumulators {
+            for accumulator in rest {
                 accumulator.drain_into(backup)
             }
-            (active, backup) = (backup, active);
+            self.swapped = !self.swapped;
         }
     }
 
-    active.drain_into(backup);
-    for mut accumulator in accumulators {
-        accumulator.drain_into(backup)
+    #[inline(always)]
+    fn add_array(&mut self, values: &[f32; A]) {
+        let (first, rest) = self.accumulators.split_at_mut(1);
+
+        let (active, backup) = if self.swapped {
+            (&mut self.swap, &mut first[0])
+        } else {
+            (&mut first[0], &mut self.swap)
+        };
+
+        active.add(values[0]);
+        for i in 1..A {
+            rest[i - 1].add(values[i])
+        }
+
+        if active.count() > 2_usize.pow(22) {
+            active.drain_into(backup);
+            for accumulator in rest {
+                accumulator.drain_into(backup)
+            }
+            self.swapped = !self.swapped;
+        }
     }
 
-    backup.into()
+    fn finalize(mut self) -> f32 {
+        let (first, rest) = self.accumulators.split_at_mut(1);
+
+        let (active, backup) = if self.swapped {
+            (&mut self.swap, &mut first[0])
+        } else {
+            (&mut first[0], &mut self.swap)
+        };
+
+        active.drain_into(backup);
+        for accumulator in rest {
+            accumulator.drain_into(backup)
+        }
+
+        let mut expansion = Expansion::new();
+        for value in backup.highs {
+            expansion.add(value);
+        }
+        for value in backup.lows {
+            expansion.add(value);
+        }
+
+        expansion.finalize()
+    }
 }

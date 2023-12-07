@@ -16,6 +16,7 @@ fn fast2sum(a: f32, b: f32) -> (f32, f32) {
     }
 }
 
+#[derive(Debug)]
 /// A non-overlapping expansion of a number
 ///
 /// Implementation of Shewchuk (1997)'s accurate floating-point methods.
@@ -51,5 +52,15 @@ impl OnlineSumAlgorithm<1> for Expansion {
         } else {
             0.
         }
+    }
+}
+
+impl IntoIterator for Expansion {
+    type Item = f32;
+
+    type IntoIter = std::vec::IntoIter<f32>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.components.into_iter()
     }
 }
