@@ -1,4 +1,4 @@
-use std::convert::{From, Into};
+use crate::online_sum::OnlineSumAlgorithm;
 
 /// Add two numbers with the Fast2Sum algorithm
 ///
@@ -23,14 +23,12 @@ pub struct Expansion {
     components: Vec<f32>,
 }
 
-impl Expansion {
-    /// Create an expansion representing zero.
-    pub fn new() -> Expansion {
+impl OnlineSumAlgorithm<1> for Expansion {
+    fn new() -> Self {
         Expansion { components: vec![] }
     }
 
-    /// Add a floating-point value to the expansion without rounding error.
-    pub fn add(&mut self, value: f32) {
+    fn add(&mut self, value: f32) {
         let mut current = value;
         let mut j = 0;
         for i in 0..self.components.len() {
@@ -46,39 +44,12 @@ impl Expansion {
             self.components.push(current);
         }
     }
-}
 
-impl From<f32> for Expansion {
-    fn from(value: f32) -> Expansion {
-        Expansion {
-            components: vec![value],
-        }
-    }
-}
-
-impl Into<f32> for Expansion {
-    fn into(self) -> f32 {
+    fn finalize(self) -> f32 {
         if self.components.len() > 0 {
             self.components[self.components.len() - 1]
         } else {
             0.
         }
     }
-}
-
-pub fn online_sum<'a, I, T>(values: I) -> f32
-where
-    I: IntoIterator,
-    I::Item: Into<&'a T>,
-    T: Into<f32> + 'a + Copy,
-{
-    let mut expansion = Expansion::new();
-    for value in values {
-        let &value_t = value.into();
-        let value_f32: f32 = value_t.into();
-        if value_f32 != 0_f32 {
-            expansion.add(value_f32);
-        }
-    }
-    expansion.into()
 }

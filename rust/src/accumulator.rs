@@ -1,5 +1,6 @@
 use std::convert::Into;
 
+use crate::online_sum::OnlineSumAlgorithm;
 use crate::expansion::Expansion;
 
 #[derive(Clone, Copy)]
@@ -20,6 +21,7 @@ impl<const N: usize> Accumulator<N> {
     }
 
     //. Add a floating-point value to the expansion without rounding error.
+    #[inline(always)]
     fn add(&mut self, value: f32) {
         let j = ((value.to_bits() >> 23) & ((1 << 8) - 1)) as usize;
 
@@ -82,7 +84,7 @@ impl<const N: usize> From<&mut Accumulator<N>> for Expansion {
 impl<const N: usize> From<&mut Accumulator<N>> for f32 {
     fn from(accumulator: &mut Accumulator<N>) -> f32 {
         let expansion: Expansion = accumulator.into();
-        expansion.into()
+        expansion.finalize()
     }
 }
 

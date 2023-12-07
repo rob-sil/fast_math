@@ -1,14 +1,15 @@
 use std::{fmt::Display, mem};
 
-use ndarray::{
-    ArrayView, Dimension, IntoDimension, Ix1, Ix2, IxDyn, Shape, ShapeBuilder,
-};
-use pyo3::{exceptions::PyValueError, prelude::*};
-
+use ndarray::{ArrayView, Dimension, IntoDimension, Ix1, Ix2, IxDyn, Shape, ShapeBuilder};
 use numpy::{dtype, Element, PyArray, PyArrayDescr, PyReadonlyArray, PyReadonlyArrayDyn};
+use pyo3::{exceptions::PyValueError, prelude::*};
 
 mod accumulator;
 mod expansion;
+mod online_sum;
+
+use expansion::Expansion;
+use online_sum::OnlineSumAlgorithm;
 
 const F32_EXPONENTS: usize = (f32::MAX_EXP - f32::MIN_EXP + 3) as usize;
 
@@ -35,8 +36,8 @@ where
     let value = if array.len() < 1024 {
         // Shewchuk's approach has low overhead and is fast for small arrays
         match array.as_slice() {
-            Ok(s) => expansion::online_sum::<_, T>(s),
-            Err(_) => expansion::online_sum::<_, T>(array.as_array()),
+            Ok(s) => Expansion::online_sum(s),
+            Err(_) => Expansion::online_sum(array.as_array()),
         }
     } else {
         // Zhu and Hayes' OnlineExactSum has higher overhead to start
@@ -93,7 +94,7 @@ where
             )
         };
         *value = if to_sum.len() < 1024 {
-            expansion::online_sum(to_sum)
+            Expansion::online_sum(to_sum)
         } else {
             accumulator::online_sum::<_, _, 7, F32_EXPONENTS>(to_sum)
         };
