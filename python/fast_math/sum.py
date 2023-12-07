@@ -31,12 +31,6 @@ def sum(
     if dtype != np.float32:
         raise NotImplementedError("Only float32s are currently supported.")
 
-    if axis is not None:
-        out_shape = (*array.shape[:axis], *array.shape[axis + 1 :])
-        out = np.zeros(out_shape, dtype=dtype)
-
-        out = sum_32(array, axis, out)
-    else:
-        out = sum_32(array, None, None)
+    out = sum_32(array, axis)
 
     return np.float32(out)
