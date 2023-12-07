@@ -99,6 +99,26 @@ benchmarks: List[Benchmark] = [
         tags={"Dimensions": "3", "Axis (`axis`)": "Full Array"},
     ),
     Benchmark(
+        setup="np.ones(({N} // 125 + 1) * 125, dtype=np.float32).reshape((5, 5, 5, -1))",
+        statement="sum(array)",
+        tags={"Dimensions": "4", "Axis (`axis`)": "Full Array"},
+    ),
+    Benchmark(
+        setup="np.arange(({N} // 125 + 1) * 125, dtype=np.float32).reshape((5, 5, 5, -1))",
+        statement="sum(array)",
+        tags={"Dimensions": "4", "Axis (`axis`)": "Full Array"},
+    ),
+    Benchmark(
+        setup="np.ones(({N} // 625 + 1) * 625, dtype=np.float32).reshape((5, 5, 5, 5, -1))",
+        statement="sum(array)",
+        tags={"Dimensions": "5", "Axis (`axis`)": "Full Array"},
+    ),
+    Benchmark(
+        setup="np.arange(({N} // 625 + 1) * 625, dtype=np.float32).reshape((5, 5, 5, 5, -1))",
+        statement="sum(array)",
+        tags={"Dimensions": "5", "Axis (`axis`)": "Full Array"},
+    ),
+    Benchmark(
         setup="np.ones({N} // 5 * 5, dtype=np.float32).reshape((5, -1))",
         statement="sum(array, axis=0)",
         tags={"Dimensions": "2", "Axis (`axis`)": "By Axis (Short)"},

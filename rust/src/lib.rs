@@ -1,6 +1,6 @@
 use std::fmt::Display;
 
-use ndarray::{Axis, Dimension, Ix1, Ix2, IxDyn, RemoveAxis, Array};
+use ndarray::{Array, Axis, Dimension, Ix1, Ix2, Ix3, Ix4, IxDyn, RemoveAxis};
 use numpy::{dtype, Element, PyArray, PyArrayDescr, PyReadonlyArray, PyReadonlyArrayDyn};
 use pyo3::{exceptions::PyValueError, prelude::*};
 
@@ -32,13 +32,9 @@ where
 
 /// Sum all the elements of an array into a single float.
 ///
-/// This function chooses:
-///
-/// 1. Which summation algorithm to use. Zhu and Hayes' OnlineExactSum is amazingly
-/// fast, but requires a large, fixed amount of memory to start. On smaller arrays,
-/// overall performance is faster for one of Shewchuk's algorithms.
-/// 2. Which `IntoIterator` implementation to use. If the array is contiguous, then
-/// adding up elements of a slice is possible and faster than iterating over the view.
+/// This function checks whether the array is contiguous, in which case it can
+/// be summed using its underlying slice. Using the slice is faster than using
+/// the array iterator.
 fn sum_full_array<'a, T, D>(py: Python, array: PyReadonlyArray<'a, T, D>) -> PyResult<Py<PyAny>>
 where
     T: Into<f32> + Element + Copy + Display,
@@ -51,7 +47,7 @@ where
     Ok(value.to_object(py))
 }
 
-/// Sum an array along an axis, filling the values of `out`.
+/// Sum an array along an axis, creating the result as a Numpy array.
 fn sum_along_axis<'py, T, D>(
     py: Python,
     array: PyReadonlyArray<'py, T, D>,
@@ -61,13 +57,9 @@ where
     T: Into<f32> + Element + Copy + Display,
     D: Dimension + RemoveAxis,
 {
-    let reduced: Array<f32, D::Smaller> = array.as_array().map_axis(Axis(axis), |view| {
-        if view.len() < 1024 {
-            Expansion::online_sum(view)
-        } else {
-            MultiAccumulator::<F32_EXPONENTS, 8>::online_sum(view)
-        }
-    });
+    let reduced: Array<f32, D::Smaller> = array
+        .as_array()
+        .map_axis(Axis(axis), |view| online_sum(view, view.len()));
 
     Ok(PyArray::from_array(py, &reduced).to_object(py))
 }
@@ -82,13 +74,7 @@ where
 ///
 ///  - Second, this function splits by-axis summation from full-array
 /// summation.
-///
-/// This function also handles
-fn sum_with_type<'py, T>(
-    py: Python,
-    array: &'py PyAny,
-    axis: Option<usize>,
-) -> PyResult<Py<PyAny>>
+fn sum_with_type<'py, T>(py: Python, array: &'py PyAny, axis: Option<usize>) -> PyResult<Py<PyAny>>
 where
     T: Into<f32> + 'py + Element + Copy + Display,
 {
@@ -104,6 +90,8 @@ where
             match ndim {
                 1 => sum_along_axis(py, PyReadonlyArray::<T, Ix1>::extract(array)?, axis),
                 2 => sum_along_axis(py, PyReadonlyArray::<T, Ix2>::extract(array)?, axis),
+                3 => sum_along_axis(py, PyReadonlyArray::<T, Ix3>::extract(array)?, axis),
+                4 => sum_along_axis(py, PyReadonlyArray::<T, Ix4>::extract(array)?, axis),
                 _ => sum_along_axis(py, PyReadonlyArray::<T, IxDyn>::extract(array)?, axis),
             }
         }
@@ -111,6 +99,8 @@ where
         match ndim {
             1 => sum_full_array(py, PyReadonlyArray::<T, Ix1>::extract(array)?),
             2 => sum_full_array(py, PyReadonlyArray::<T, Ix2>::extract(array)?),
+            3 => sum_full_array(py, PyReadonlyArray::<T, Ix3>::extract(array)?),
+            4 => sum_full_array(py, PyReadonlyArray::<T, Ix4>::extract(array)?),
             _ => sum_full_array(py, PyReadonlyArray::<T, IxDyn>::extract(array)?),
         }
     }
@@ -125,11 +115,7 @@ where
 /// For valid array types, the sum moves on to the appropriate version of
 /// `sum_with_type`.
 #[pyfunction]
-fn sum_32<'py>(
-    py: Python,
-    array: &'py PyAny,
-    axis: Option<usize>,
-) -> PyResult<Py<PyAny>> {
+fn sum_32<'py>(py: Python, array: &'py PyAny, axis: Option<usize>) -> PyResult<Py<PyAny>> {
     match array.getattr("dtype") {
         Ok(py_dtype) => {
             let descr = py_dtype.extract::<&PyArrayDescr>()?;
