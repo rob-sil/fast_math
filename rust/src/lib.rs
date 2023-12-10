@@ -1,14 +1,16 @@
 use std::fmt::Display;
 
-use ndarray::{Array, Axis, Dimension, Ix1, Ix2, Ix3, Ix4, IxDyn, RemoveAxis};
+use ndarray::{Axis, Dimension, Ix1, Ix2, Ix3, Ix4, IxDyn, RemoveAxis};
 use numpy::{dtype, Element, PyArray, PyArrayDescr, PyReadonlyArray, PyReadonlyArrayDyn};
 use pyo3::{exceptions::PyValueError, prelude::*};
 
 mod accumulator;
+mod array;
 mod expansion;
 mod online_sum;
 
 use accumulator::MultiAccumulator;
+use array::map_axis;
 use expansion::Expansion;
 use online_sum::OnlineSumAlgorithm;
 
@@ -47,7 +49,7 @@ where
     Ok(value.to_object(py))
 }
 
-/// Sum an array along an axis, creating the result as a Numpy array.
+/// Sum an array along an axis, creating the result as a NumPy array.
 fn sum_along_axis<'py, T, D>(
     py: Python,
     array: PyReadonlyArray<'py, T, D>,
@@ -57,9 +59,9 @@ where
     T: Into<f32> + Element + Copy + Display,
     D: Dimension + RemoveAxis,
 {
-    let reduced: Array<f32, D::Smaller> = array
-        .as_array()
-        .map_axis(Axis(axis), |view| online_sum(view, view.len()));
+    let reduced = map_axis(&array.as_array(), Axis(axis), |view| {
+        online_sum(view, view.len())
+    });
 
     Ok(PyArray::from_array(py, &reduced).to_object(py))
 }

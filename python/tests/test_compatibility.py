@@ -48,3 +48,13 @@ def test_axis():
             np.sum(array, axis=axis),
             fm.sum(array, axis=axis),
         )
+
+
+def test_axis_empty():
+    array = np.array([], dtype=np.float32).reshape((-1, 5, 5))
+
+    for axis in range(array.ndim):
+        assert_array_almost_equal(
+            np.sum(array, axis=axis),
+            fm.sum(array, axis=axis),
+        )
