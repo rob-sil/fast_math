@@ -7,14 +7,13 @@ use pyo3::{exceptions::PyValueError, prelude::*};
 mod accumulator;
 mod array;
 mod expansion;
+mod float;
 mod online_sum;
 
 use accumulator::MultiAccumulator;
 use array::map_axis;
 use expansion::Expansion;
 use online_sum::OnlineSumAlgorithm;
-
-const F32_EXPONENTS: usize = (f32::MAX_EXP - f32::MIN_EXP + 3) as usize;
 
 #[inline(always)]
 fn online_sum<'a, I, T>(values: I, len: usize) -> f32
@@ -28,7 +27,7 @@ where
         Expansion::online_sum(values)
     } else {
         // Zhu and Hayes' OnlineExactSum has higher overhead to start
-        MultiAccumulator::<F32_EXPONENTS, 8>::online_sum(values)
+        MultiAccumulator::<8>::online_sum(values)
     }
 }
 

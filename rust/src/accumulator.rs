@@ -1,19 +1,28 @@
 use crate::expansion::Expansion;
+use crate::float::FloatingPoint;
 use crate::online_sum::OnlineSumAlgorithm;
 
+/// Calculate the size an accumulator needs to hold floating-point summation
+const fn accumulator_array_size<T>() -> usize
+where
+    T: FloatingPoint,
+{
+    2_usize.pow(T::EXPONENT_BITS as u32)
+}
+
 #[derive(Clone, Copy)]
-struct Accumulator<const N: usize> {
-    highs: [f32; N],
-    lows: [f32; N],
+struct Accumulator {
+    highs: [f32; accumulator_array_size::<f32>()],
+    lows: [f32; accumulator_array_size::<f32>()],
     count: usize,
 }
 
-impl<const N: usize> Accumulator<N> {
+impl Accumulator {
     /// Create an accumulator representing zero.
-    pub fn new() -> Accumulator<N> {
+    pub fn new() -> Accumulator {
         Accumulator {
-            highs: [0_f32; N],
-            lows: [0_f32; N],
+            highs: [0_f32; accumulator_array_size::<f32>()],
+            lows: [0_f32; accumulator_array_size::<f32>()],
             count: 0,
         }
     }
@@ -21,7 +30,7 @@ impl<const N: usize> Accumulator<N> {
     //. Add a floating-point value to the expansion without rounding error.
     #[inline(always)]
     fn add(&mut self, value: f32) {
-        let j = ((value.to_bits() >> 23) & ((1 << 8) - 1)) as usize;
+        let j = value.exponent();
 
         let high = self.highs[j] + value;
         let low = value - (high - self.highs[j]);
@@ -40,7 +49,7 @@ impl<const N: usize> Accumulator<N> {
     }
 
     /// Add the value of the accumulator to the sink.
-    fn drain_into(&mut self, sink: &mut Accumulator<N>) {
+    fn drain_into(&mut self, sink: &mut Accumulator) {
         for value in self.highs {
             if value != 0_f32 {
                 sink.add(value);
@@ -62,17 +71,17 @@ impl<const N: usize> Accumulator<N> {
 }
 
 /// A summation algorithm that uses `A` accumulators in parallel
-pub struct MultiAccumulator<const N: usize, const A: usize> {
-    accumulators: [Accumulator<N>; A],
-    swap: Accumulator<N>,
+pub struct MultiAccumulator<const A: usize> {
+    accumulators: [Accumulator; A],
+    swap: Accumulator,
     swapped: bool,
 }
 
-impl<const N: usize, const A: usize> OnlineSumAlgorithm<A> for MultiAccumulator<N, A> {
+impl<const A: usize> OnlineSumAlgorithm<A> for MultiAccumulator<A> {
     fn new() -> Self {
         MultiAccumulator {
-            accumulators: [Accumulator::<N>::new(); A],
-            swap: Accumulator::<N>::new(),
+            accumulators: [Accumulator::new(); A],
+            swap: Accumulator::new(),
             swapped: true,
         }
     }
