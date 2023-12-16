@@ -24,6 +24,18 @@ pub struct Expansion {
     components: Vec<f32>,
 }
 
+impl Expansion {
+    #[inline(always)]
+    /// Round the represented value to a floating-point value
+    pub fn round(&self) -> f32 {
+        if self.components.len() > 0 {
+            self.components[self.components.len() - 1]
+        } else {
+            0.
+        }
+    }
+}
+
 impl OnlineSumAlgorithm<1> for Expansion {
     fn new() -> Self {
         Expansion { components: vec![] }
@@ -47,11 +59,7 @@ impl OnlineSumAlgorithm<1> for Expansion {
     }
 
     fn finalize(self) -> f32 {
-        if self.components.len() > 0 {
-            self.components[self.components.len() - 1]
-        } else {
-            0.
-        }
+        self.round()
     }
 }
 

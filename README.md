@@ -1,6 +1,6 @@
 # fast_math
 
-An accurate replacement for NumPy's `sum`.
+An accurate replacement for NumPy's `sum` and `cumsum`.
 
 ## Floating-Point Rounding Errors
 
@@ -27,7 +27,7 @@ Rounding error is a particular problem when working with a large number of float
 499999500000.0
 ```
 
-*Note*: In some cases, `numpy.sum` will use [pairwise summation](https://en.wikipedia.org/wiki/Pairwise_summation), which reduces the amount of rounding error. For example, summing $2^{25}$ ones will be accurate and summing $2^{25} + 1$ ones will only be off by one. However, when when Numpy doesn't use pairwise summation, summing $2^{25}$ ones gets stuck at $2^{24}$.
+*Note*: In some cases, `numpy.sum` will use [pairwise summation](https://en.wikipedia.org/wiki/Pairwise_summation), which reduces the amount of rounding error. For example, summing $2^{25}$ ones will be accurate and summing $2^{25} + 1$ ones will only be off by one. However, when when Numpy doesn't use pairwise summation, summing $2^{25}$ ones gets stuck at $2^{24}$. `numpy.cumsum` is such an example.
 
 ### `math.fsum` and Performance
 

@@ -6,12 +6,14 @@ use pyo3::{exceptions::PyValueError, prelude::*};
 
 mod accumulator;
 mod array;
+mod cumsum;
 mod expansion;
 mod float;
 mod online_sum;
 
 use accumulator::MultiAccumulator;
 use array::map_axis;
+use cumsum::cumsum_32;
 use expansion::Expansion;
 use online_sum::OnlineSumAlgorithm;
 
@@ -148,5 +150,6 @@ fn sum_32<'py>(py: Python, array: &'py PyAny, axis: Option<usize>) -> PyResult<P
 #[pymodule]
 fn rust_fast_math(_py: Python, m: &PyModule) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(sum_32, m)?)?;
+    m.add_function(wrap_pyfunction!(cumsum_32, m)?)?;
     Ok(())
 }
