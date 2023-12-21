@@ -111,6 +111,7 @@ def test_nan():
     assert_array_almost_equal(accurate, result)
 
 
+@pytest.mark.filterwarnings("ignore:invalid value encountered in accumulate")
 def test_mixed_inf():
     """Test that cumsum handles mixing positive and negative infinity"""
     array = np.array([1, 2, -np.inf, 5, np.inf, 7], dtype=np.float32)

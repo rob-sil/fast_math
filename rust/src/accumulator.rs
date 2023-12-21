@@ -15,6 +15,7 @@ struct Accumulator {
     highs: [f32; accumulator_array_size::<f32>()],
     lows: [f32; accumulator_array_size::<f32>()],
     count: usize,
+    special: f32,
 }
 
 impl Accumulator {
@@ -24,19 +25,30 @@ impl Accumulator {
             highs: [0_f32; accumulator_array_size::<f32>()],
             lows: [0_f32; accumulator_array_size::<f32>()],
             count: 0,
+            special: 0_f32,
         }
     }
 
     //. Add a floating-point value to the expansion without rounding error.
     #[inline(always)]
     fn add(&mut self, value: f32) {
-        let j = value.exponent();
+        if value.is_finite() {
+            let j = value.exponent();
 
-        let high = self.highs[j] + value;
-        let low = value - (high - self.highs[j]);
+            let high = self.highs[j] + value;
+            let low = value - (high - self.highs[j]);
 
-        self.highs[j] = high;
-        self.lows[j] += low;
+            self.highs[j] = high;
+            self.lows[j] += low;
+
+        // Haven't encountered NAN or an infinity yet
+        } else if self.special == 0_f32 {
+            self.special = value;
+
+		// Two different non-finite values add to NAN
+        } else if self.special != value {
+            self.special = f32::NAN;
+        }
 
         self.count += 1;
     }
@@ -46,21 +58,26 @@ impl Accumulator {
         self.highs.fill(0_f32);
         self.lows.fill(0_f32);
         self.count = 0;
+		self.special = 0_f32;
     }
 
     /// Add the value of the accumulator to the sink.
     fn drain_into(&mut self, sink: &mut Accumulator) {
-        for value in self.highs {
-            if value != 0_f32 {
-                sink.add(value);
-            }
-        }
+		if self.special != 0_f32 {
+			sink.add(self.special);
+		} else {
+			for value in self.highs {
+				if value != 0_f32 {
+					sink.add(value);
+				}
+			}
 
-        for value in self.lows {
-            if value != 0_f32 {
-                sink.add(value);
-            }
-        }
+			for value in self.lows {
+				if value != 0_f32 {
+					sink.add(value);
+				}
+			}
+		}
 
         self.clear();
     }
@@ -144,14 +161,18 @@ impl<const A: usize> OnlineSumAlgorithm<A> for MultiAccumulator<A> {
             accumulator.drain_into(backup)
         }
 
-        let mut expansion = Expansion::new();
-        for value in backup.highs {
-            expansion.add(value);
-        }
-        for value in backup.lows {
-            expansion.add(value);
-        }
-
-        expansion.finalize()
+		if backup.special != 0_f32 {
+			backup.special
+		} else {
+			let mut expansion = Expansion::new();
+			for value in backup.highs {
+				expansion.add(value);
+			}
+			for value in backup.lows {
+				expansion.add(value);
+			}
+	
+			expansion.finalize()
+		}
     }
 }

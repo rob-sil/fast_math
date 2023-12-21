@@ -55,3 +55,50 @@ def test_axis():
         accurate,
         fm.sum(array, axis=1),
     )
+
+
+@pytest.mark.parametrize("length", [10, 1_000, 10_000])
+def test_inf(length):
+    """Test that sum handles infinity"""
+    array = np.arange(length, dtype=np.float32)
+    array[5] = np.inf
+
+    assert fm.sum(array) == np.inf
+
+
+@pytest.mark.parametrize("length", [10, 1_000, 10_000])
+def test_neg_inf(length):
+    """Test that sum handles negative infinity"""
+    array = np.arange(length, dtype=np.float32)
+    array[5] = -np.inf
+
+    assert fm.sum(array) == -np.inf
+
+
+@pytest.mark.parametrize("length", [10, 1_000, 10_000])
+def test_nan(length):
+    """Test that sum handles NaN"""
+    array = np.ones(length, dtype=np.float32)
+    array[5] = np.nan
+
+    assert np.isnan(fm.sum(array))
+
+
+@pytest.mark.parametrize("length", [10, 1_000, 10_000])
+def test_mixed_inf(length):
+    """Test that sum handles mixing positive and negative infinity"""
+    array = np.ones(length, dtype=np.float32)
+    array[3] = np.inf
+    array[5] = -np.inf
+
+    assert np.isnan(fm.sum(array))
+
+
+@pytest.mark.parametrize("length", [10, 1_000, 10_000])
+def test_mixed_nan(length):
+    """Test that sum handles multiple NaN/infinities"""
+    array = np.ones(length, dtype=np.float32)
+    array[3] = np.nan
+    array[5] = -np.inf
+
+    assert np.isnan(fm.sum(array))
