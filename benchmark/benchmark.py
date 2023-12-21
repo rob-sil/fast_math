@@ -277,7 +277,7 @@ if __name__ == "__main__":
 
             print()
 
-    markdown += "# `cumsum` Benchmark Results\n"
+    markdown += "\n\n# `cumsum` Benchmark Results\n"
 
     markdown += "| Array Size | `fast_math` | NumPy | Slowdown | Best | Worst |\n"
     markdown += "| -: | -: | -: | -: | -: | -: |\n"

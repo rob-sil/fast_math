@@ -21,14 +21,19 @@ fn fast2sum(a: f32, b: f32) -> (f32, f32) {
 ///
 /// Implementation of Shewchuk (1997)'s accurate floating-point methods.
 pub struct Expansion {
+	/// A list of non-overlapping floats representing the value
     components: Vec<f32>,
+	/// NAN or an infinity if one has been encountered, otherwise zero
+	special: f32,
 }
 
 impl Expansion {
     #[inline(always)]
-    /// Round the represented value to a floating-point value
+    /// Round the represented value to the nearest floating-point value
     pub fn round(&self) -> f32 {
-        if self.components.len() > 0 {
+		if self.special != 0_f32 {
+			self.special
+		} else if self.components.len() > 0 {
             self.components[self.components.len() - 1]
         } else {
             0.
@@ -38,10 +43,21 @@ impl Expansion {
 
 impl OnlineSumAlgorithm<1> for Expansion {
     fn new() -> Self {
-        Expansion { components: vec![] }
+        Expansion { components: vec![], special: 0_f32 }
     }
 
     fn add(&mut self, value: f32) {
+		// Handle NAN and infinities
+		if !value.is_finite() {
+			if self.special == 0_f32 {
+				self.special = value;
+			} else if self.special != value {
+				self.special = f32::NAN;
+			}
+			return;
+		}
+
+		// Sum finite values
         let mut current = value;
         let mut j = 0;
         for i in 0..self.components.len() {
@@ -53,7 +69,8 @@ impl OnlineSumAlgorithm<1> for Expansion {
             }
         }
         self.components.truncate(j);
-        if current != 0_f32 {
+
+		if current != 0_f32 {
             self.components.push(current);
         }
     }

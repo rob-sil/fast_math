@@ -79,3 +79,53 @@ def test_axis_empty():
             np.cumsum(array, axis=axis),
             fm.cumsum(array, axis=axis),
         )
+
+
+def test_inf():
+    """Test that cumsum handles infinity"""
+    array = np.array([1, 2, np.inf, 4], dtype=np.float32)
+
+    accurate = np.cumsum(array)
+    result = fm.cumsum(array)
+
+    assert_array_almost_equal(accurate, result)
+
+
+def test_neg_inf():
+    """Test that cumsum handles negative infinity"""
+    array = np.array([1, 2, -np.inf, 4], dtype=np.float32)
+
+    accurate = np.cumsum(array)
+    result = fm.cumsum(array)
+
+    assert_array_almost_equal(accurate, result)
+
+
+def test_nan():
+    """Test that cumsum handles NaN"""
+    array = np.array([1, 2, np.nan, 4], dtype=np.float32)
+
+    accurate = np.cumsum(array)
+    result = fm.cumsum(array)
+
+    assert_array_almost_equal(accurate, result)
+
+
+def test_mixed_inf():
+    """Test that cumsum handles mixing positive and negative infinity"""
+    array = np.array([1, 2, -np.inf, 5, np.inf, 7], dtype=np.float32)
+
+    accurate = np.cumsum(array)
+    result = fm.cumsum(array)
+
+    assert_array_almost_equal(accurate, result)
+
+
+def test_mixed_nan():
+    """Test that cumsum handles multiple NaN/infinities"""
+    array = np.array([1, 2, -np.inf, 5, np.nan, 7], dtype=np.float32)
+
+    accurate = np.cumsum(array)
+    result = fm.cumsum(array)
+
+    assert_array_almost_equal(accurate, result)
