@@ -2,6 +2,8 @@ from math import fsum
 
 import numpy as np
 import pytest
+from hypothesis import assume, given
+from hypothesis.extra.numpy import arrays
 from numpy.testing import assert_array_almost_equal
 
 import fast_math as fm
@@ -102,3 +104,23 @@ def test_mixed_nan(length):
     array[5] = -np.inf
 
     assert np.isnan(fm.sum(array))
+
+
+@given(arrays(dtype=np.float32, shape=(1_000,)))
+def test_accuracy(array):
+    """Hypothesis tests that cumsum reaches the appropriate ending value"""
+    if np.inf in array and -np.inf in array:
+        accurate = np.nan
+    else:
+        accurate = np.float32(fsum(array))
+
+    # Catch overflow
+    if np.isfinite(np.array(array)).all():
+        assume(not np.isnan(accurate))
+
+    result = fm.sum(array)
+
+    if np.isnan(accurate):
+        assert np.isnan(result)
+    else:
+        assert result == accurate

@@ -4,7 +4,6 @@ import numpy as np
 import pytest
 from hypothesis import assume, given
 from hypothesis.extra.numpy import arrays
-from hypothesis.strategies import floats
 from numpy.testing import assert_array_almost_equal
 
 import fast_math as fm
