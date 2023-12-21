@@ -166,6 +166,7 @@ def time_format(seconds) -> str:
 
 
 if __name__ == "__main__":
+    # sum implementations
     results = []
     seen_tags = defaultdict(set)
 
@@ -192,7 +193,91 @@ if __name__ == "__main__":
 
             print()
 
-    markdown = "# Benchmark Results\n"
+    markdown = "# `sum` Benchmark Results\n"
+
+    markdown += "| Array Size | `fast_math` | NumPy | Slowdown | Best | Worst |\n"
+    markdown += "| -: | -: | -: | -: | -: | -: |\n"
+    for N in sizes:
+        fast_results = np.array(
+            [result["fast_math"] for result in results if result["N"] == N]
+        )
+        fast_time = fast_results.mean()
+
+        numpy_results = np.array(
+            [result["numpy"] for result in results if result["N"] == N]
+        )
+        numpy_time = numpy_results.mean()
+
+        best_ratio = (fast_results / numpy_results).min()
+        worst_ratio = (fast_results / numpy_results).max()
+
+        markdown += (
+            f"| {N:,} | {time_format(fast_time)} | {time_format(numpy_time)} "
+            f"| {fast_time / numpy_time:.1f}x "
+            f"| {best_ratio:.1f}x | {worst_ratio:.1f}x |\n"
+        )
+
+    for tag_name, tag_values in seen_tags.items():
+        markdown += "\n## Results: " + tag_name + "\n"
+
+        markdown += f"| {tag_name} | `fast_math` | NumPy | Slowdown | Best | Worst |\n"
+        markdown += "| -: | -: | -: | -: | -: | -: |\n"
+
+        for tag_value in sorted(tag_values):
+            fast_results = np.array(
+                [
+                    result["fast_math"]
+                    for result in results
+                    if result.get(tag_name, None) == tag_value
+                ]
+            )
+            fast_time = fast_results.mean()
+
+            numpy_results = np.array(
+                [
+                    result["numpy"]
+                    for result in results
+                    if result.get(tag_name, None) == tag_value
+                ]
+            )
+            numpy_time = numpy_results.mean()
+
+            best_ratio = (fast_results / numpy_results).min()
+            worst_ratio = (fast_results / numpy_results).max()
+
+            markdown += (
+                f"| {tag_value} | {time_format(fast_time)} | {time_format(numpy_time)} "
+                f"| {fast_time / numpy_time:.1f}x "
+                f"| {best_ratio:.1f}x | {worst_ratio:.1f}x |\n"
+            )
+
+    results = []
+    seen_tags = defaultdict(set)
+
+    for benchmark in benchmarks:
+        for N in sizes:
+            print(f"> array = {benchmark.setup.format(N=N)}\n> {benchmark.statement}")
+
+            fast_time = benchmark.timeit(N, fm.cumsum)
+            print(f"\tfast_math: {time_format(fast_time)}")
+
+            numpy_time = benchmark.timeit(N, np.cumsum)
+            print(f"\t    numpy: {time_format(numpy_time)}")
+
+            result = {
+                "N": N,
+                "fast_math": fast_time,
+                "numpy": numpy_time,
+            }
+            for tag_name, tag_value in benchmark.tags.items():
+                result[tag_name] = tag_value
+                seen_tags[tag_name].add(tag_value)
+
+            results.append(result)
+
+            print()
+
+    markdown += "# `cumsum` Benchmark Results\n"
 
     markdown += "| Array Size | `fast_math` | NumPy | Slowdown | Best | Worst |\n"
     markdown += "| -: | -: | -: | -: | -: | -: |\n"
