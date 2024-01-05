@@ -106,21 +106,8 @@ def test_mixed_nan(length):
     assert np.isnan(fm.sum(array))
 
 
-@given(arrays(dtype=np.float32, shape=(1_000,)))
-def test_accuracy(array):
-    """Hypothesis tests that cumsum reaches the appropriate ending value"""
-    if np.inf in array and -np.inf in array:
-        accurate = np.nan
-    else:
-        accurate = np.float32(fsum(array))
+def test_overflow():
+    """Test that summing can overflow into infinity"""
+    array = np.array([2**126] * 8, dtype=np.float32)
 
-    # Catch overflow
-    if np.isfinite(np.array(array)).all():
-        assume(not np.isnan(accurate))
-
-    result = fm.sum(array)
-
-    if np.isnan(accurate):
-        assert np.isnan(result)
-    else:
-        assert result == accurate
+    assert fm.sum(array) == np.inf

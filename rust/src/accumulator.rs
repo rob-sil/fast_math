@@ -45,7 +45,7 @@ impl Accumulator {
         } else if self.special == 0_f32 {
             self.special = value;
 
-		// Two different non-finite values add to NAN
+        // Two different non-finite values add to NAN
         } else if self.special != value {
             self.special = f32::NAN;
         }
@@ -58,26 +58,26 @@ impl Accumulator {
         self.highs.fill(0_f32);
         self.lows.fill(0_f32);
         self.count = 0;
-		self.special = 0_f32;
+        self.special = 0_f32;
     }
 
     /// Add the value of the accumulator to the sink.
     fn drain_into(&mut self, sink: &mut Accumulator) {
-		if self.special != 0_f32 {
-			sink.add(self.special);
-		} else {
-			for value in self.highs {
-				if value != 0_f32 {
-					sink.add(value);
-				}
-			}
+        if self.special != 0_f32 {
+            sink.add(self.special);
+        } else {
+            for value in self.highs {
+                if value != 0_f32 {
+                    sink.add(value);
+                }
+            }
 
-			for value in self.lows {
-				if value != 0_f32 {
-					sink.add(value);
-				}
-			}
-		}
+            for value in self.lows {
+                if value != 0_f32 && value.is_finite() {
+                    sink.add(value);
+                }
+            }
+        }
 
         self.clear();
     }
@@ -161,18 +161,18 @@ impl<const A: usize> OnlineSumAlgorithm<A> for MultiAccumulator<A> {
             accumulator.drain_into(backup)
         }
 
-		if backup.special != 0_f32 {
-			backup.special
-		} else {
-			let mut expansion = Expansion::new();
-			for value in backup.highs {
-				expansion.add(value);
-			}
-			for value in backup.lows {
-				expansion.add(value);
-			}
-	
-			expansion.finalize()
-		}
+        if backup.special != 0_f32 {
+            backup.special
+        } else {
+            let mut expansion = Expansion::new();
+            for value in backup.highs {
+                expansion.add(value);
+            }
+            for value in backup.lows {
+                expansion.add(value);
+            }
+
+            expansion.finalize()
+        }
     }
 }

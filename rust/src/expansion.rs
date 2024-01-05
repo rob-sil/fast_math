@@ -63,7 +63,7 @@ impl OnlineSumAlgorithm<1> for Expansion {
         for i in 0..self.components.len() {
             let (high, low) = fast2sum(current, self.components[i]);
             current = high;
-            if low != 0_f32 {
+            if low != 0_f32 && low.is_finite() {
                 self.components[j] = low;
                 j += 1;
             }
