@@ -1,5 +1,4 @@
 from math import fsum
-from unittest import skip
 
 import numpy as np
 import pytest
@@ -53,7 +52,6 @@ def test_small(size):
     assert_array_almost_equal(np.cumsum(array), fm.cumsum(array))
 
 
-@skip
 @pytest.mark.parametrize("size", [1_000, 10_000, 100_000])
 def test_big(size):
     """Test cumulative sums reach the proper sum for large numbers"""
@@ -147,7 +145,6 @@ def test_overflow():
     assert_array_almost_equal(accurate, result)
 
 
-@skip
 @given(arrays(dtype=np.float32, shape=(10_000,)))
 def test_accuracy(array):
     """Hypothesis tests that cumsum reaches the appropriate ending value"""

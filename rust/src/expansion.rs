@@ -1,3 +1,4 @@
+use crate::float::FloatingPoint;
 use crate::online_sum::OnlineSumAlgorithm;
 
 /// Add two numbers with the Fast2Sum algorithm
@@ -21,43 +22,67 @@ fn fast2sum(a: f32, b: f32) -> (f32, f32) {
 ///
 /// Implementation of Shewchuk (1997)'s accurate floating-point methods.
 pub struct Expansion {
-	/// A list of non-overlapping floats representing the value
+    /// A list of non-overlapping floats representing the value
     components: Vec<f32>,
-	/// NAN or an infinity if one has been encountered, otherwise zero
-	special: f32,
+    /// NAN or an infinity if one has been encountered, otherwise zero
+    special: f32,
 }
 
 impl Expansion {
     #[inline(always)]
     /// Round the represented value to the nearest floating-point value
     pub fn round(&self) -> f32 {
-		if self.special != 0_f32 {
-			self.special
-		} else if self.components.len() > 0 {
+        if self.special != 0_f32 {
+            self.special
+        } else if self.components.len() == 0 {
+            0.
+        } else if self.components.len() == 1 {
             self.components[self.components.len() - 1]
         } else {
-            0.
+            // The expansion is not necessarily unique, due to rounding.
+            let ultimate = self.components[self.components.len() - 1];
+            let penultimate = self.components[self.components.len() - 2];
+
+            // Remaining values are too small to affect rounding
+            if ultimate.exponent() - f32::MANTISSA_BITS - 1 > penultimate.exponent() {
+                ultimate
+
+            // The next value alone affects rounding
+            } else if penultimate.mantissa() != 0 || self.components.len() == 2 {
+                ultimate + penultimate
+
+            // Round
+            } else if penultimate.signum() == self.components[self.components.len() - 3].signum() {
+                ultimate + 2. * penultimate
+
+            // Don't round
+            } else {
+                ultimate
+            }
         }
     }
 }
 
 impl OnlineSumAlgorithm<1> for Expansion {
     fn new() -> Self {
-        Expansion { components: vec![], special: 0_f32 }
+        Expansion {
+            components: vec![],
+            special: 0_f32,
+        }
     }
 
     fn add(&mut self, value: f32) {
-		// Handle NAN and infinities
-		if !value.is_finite() {
-			if self.special == 0_f32 {
-				self.special = value;
-			} else if self.special != value {
-				self.special = f32::NAN;
-			}
-			return;
-		}
+        // Handle NAN and infinities
+        if !value.is_finite() {
+            if self.special == 0_f32 {
+                self.special = value;
+            } else if self.special != value {
+                self.special = f32::NAN;
+            }
+            return;
+        }
 
-		// Sum finite values
+        // Sum finite values
         let mut current = value;
         let mut j = 0;
         for i in 0..self.components.len() {
@@ -70,7 +95,7 @@ impl OnlineSumAlgorithm<1> for Expansion {
         }
         self.components.truncate(j);
 
-		if current != 0_f32 {
+        if current != 0_f32 {
             self.components.push(current);
         }
     }

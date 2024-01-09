@@ -31,7 +31,7 @@ Rounding error is a particular problem when working with a large number of float
 
 ### `math.fsum` and Performance
 
-The Python standard library implements [`math.fsum`](https://docs.python.org/3/library/math.html#math.fsum), which calculates the sum of floating-point numbers accurately. However, `fsum` is significantly slower than `numpy.sum`,  possibly 100-200 times slower, which may not be practical for scientific computing on large arrays.
+The Python standard library implements [`math.fsum`](https://docs.python.org/3/library/math.html#math.fsum), which calculates the sum of floating-point numbers accurately (up to possible error in the last digit). However, `fsum` is significantly slower than `numpy.sum`,  possibly 100-200 times slower, which may not be practical for scientific computing on large arrays.
 
 ## Installation
 
