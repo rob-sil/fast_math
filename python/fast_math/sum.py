@@ -23,6 +23,17 @@ def sum(
     axis: int, optional
         If provided, the axis to sum over. The sum will be returned as an array
         with one less dimension than `array`.
+
+    Returns
+    ---
+        The sum of the array values, rounded to floating-point precision.
+
+        The output is not guaranteed to be accurate if summing a subset of the
+    array values would overflow. For instance, an array with many large
+    positive numbers along with the negative of all those numbers has a well-
+    defined sum of zero. However, this function may return NaN, infinity, or
+    negative infinity. If the function does return a finite number, then it
+    will be the rounded sum.
     """
     if not isinstance(array, np.ndarray):
         raise NotImplementedError("Only NumPy arrays are supported.")

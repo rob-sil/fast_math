@@ -2,7 +2,7 @@ use crate::expansion::Expansion;
 use crate::float::FloatingPoint;
 use crate::online_sum::OnlineSumAlgorithm;
 
-/// Calculate the size an accumulator needs to hold floating-point summation
+/// Calculate the size an accumulator needs to hold floating-point summation.
 const fn accumulator_array_size<T>() -> usize
 where
     T: FloatingPoint,
@@ -10,6 +10,14 @@ where
     2_usize.pow(T::EXPONENT_BITS as u32)
 }
 
+/// An accumulator adds up values, grouping them by their exponent.
+///
+/// Adding two numbers of the same exponent has at most one place of rounding
+/// error, and repeatedly adding numbers of the same exponent has bounded
+/// rounding error based on the total count.
+///
+/// The accumulator uses two floats for extended precision, assuming the count
+/// of numbers added does not reach the maximum count.
 #[derive(Clone, Copy)]
 struct Accumulator {
     highs: [f32; accumulator_array_size::<f32>()],
@@ -29,12 +37,13 @@ impl Accumulator {
         }
     }
 
-    //. Add a floating-point value to the expansion without rounding error.
+    /// Add a floating-point value to the expansion without rounding error.
     #[inline(always)]
     fn add(&mut self, value: f32) {
         if value.is_finite() {
             let j = value.exponent();
 
+            // branch needed since the exponent will not be lower (if nonzero)
             let high = self.highs[j] + value;
             let low = value - (high - self.highs[j]);
 
@@ -53,7 +62,7 @@ impl Accumulator {
         self.count += 1;
     }
 
-    // Reset the accumulator to zero
+    /// Reset the accumulator to zero.
     fn clear(&mut self) {
         self.highs.fill(0_f32);
         self.lows.fill(0_f32);
@@ -61,7 +70,7 @@ impl Accumulator {
         self.special = 0_f32;
     }
 
-    /// Add the value of the accumulator to the sink.
+    /// Add the stored value of the accumulator to another accumulator.
     fn drain_into(&mut self, sink: &mut Accumulator) {
         if self.special != 0_f32 {
             sink.add(self.special);
@@ -82,12 +91,22 @@ impl Accumulator {
         self.clear();
     }
 
+    /// How many numbers have been added to this accumulator.
     fn count(&self) -> usize {
         self.count
     }
+
+    /// How many numbers can be added without rounding error.
+    fn max_count(&self) -> usize {
+        2_usize.pow(22)
+    }
 }
 
-/// A summation algorithm that uses `A` accumulators in parallel
+/// A summation algorithm that uses `A` accumulators in parallel.
+/// Based on Zhu and Hayes.
+///
+/// Once the accumulators reach their maximum count, their internal sum values
+/// are added together into a new accumulator, resetting the rest.
 pub struct MultiAccumulator<const A: usize> {
     accumulators: [Accumulator; A],
     swap: Accumulator,
@@ -114,7 +133,7 @@ impl<const A: usize> OnlineSumAlgorithm<A> for MultiAccumulator<A> {
 
         active.add(value);
 
-        if active.count() > 2_usize.pow(22) {
+        if active.count() >= active.max_count() {
             active.drain_into(backup);
             for accumulator in rest {
                 accumulator.drain_into(backup)
@@ -138,7 +157,7 @@ impl<const A: usize> OnlineSumAlgorithm<A> for MultiAccumulator<A> {
             rest[i - 1].add(values[i])
         }
 
-        if active.count() > 2_usize.pow(22) {
+        if active.count() >= active.max_count() {
             active.drain_into(backup);
             for accumulator in rest {
                 accumulator.drain_into(backup)

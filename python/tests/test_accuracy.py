@@ -10,25 +10,37 @@ import fast_math as fm
 
 
 def test_float32():
-    # A 32-bit float (IEEE 754 binary32) has a 23-bit mantissa, so 2^24 is
-    # stored without a "ones" place. Trying to add 1 to 2^24 rounds to just
-    # 2^24.
+    """Test accuracy on binary32 floating-point numbers
+
+    A 32-bit float (IEEE 754 binary32) has a 23-bit mantissa, so 2^24 is stored
+    without a "ones" place. Trying to add 1 to 2^24 rounds to just 2^24.
+    """
+
     array = np.array([1, 2**24, 0, -(2**24)], dtype=np.float32)
 
     accurate = np.float32(fsum(array))
     assert accurate == fm.sum(array)
 
 
-def test_arange():
-    # Test adding many ascending numbers
+def test_ascending():
+    """Test adding a sequence of ascending numbers
+
+    When the array is ascending, each additional number grows along with the
+    running sum.
+    """
     array = np.arange(1_000_000, dtype=np.float32)
 
     accurate = np.float32(fsum(array))
     assert accurate == fm.sum(array)
 
 
-def test_arange_reverse():
-    # Test adding many descending numbers
+def test_descending():
+    """Test adding a sequence of descending numbers
+
+    When the array is descending, each additional number gets smaller and may
+    get to a point where the remaining numbers are all within the rounding
+    error of the current value in 32 bits.
+    """
     array = np.arange(1_000_000, dtype=np.float32)[::-1]
 
     accurate = np.float32(fsum(array))
@@ -37,7 +49,7 @@ def test_arange_reverse():
 
 @pytest.mark.parametrize("ndims", [1, 2, 3, 4])
 def test_dimensions(ndims):
-    # Test summing arrays with multiple dimensions
+    """Test summing multi-dimensional arrays."""
     shape = tuple([5] * (ndims - 1) + [-1])
     array = np.arange(1_000_000, dtype=np.float32).reshape(shape)
 
@@ -46,6 +58,7 @@ def test_dimensions(ndims):
 
 
 def test_axis():
+    """Test summing along an axis."""
     array = np.arange(2_000_000, dtype=np.float32).reshape((2, -1))
 
     accurate = np.array(
@@ -61,7 +74,7 @@ def test_axis():
 
 @pytest.mark.parametrize("length", [10, 1_000, 10_000])
 def test_inf(length):
-    """Test that sum handles infinity"""
+    """Test that sum handles infinity in the argument."""
     array = np.arange(length, dtype=np.float32)
     array[5] = np.inf
 
@@ -70,7 +83,7 @@ def test_inf(length):
 
 @pytest.mark.parametrize("length", [10, 1_000, 10_000])
 def test_neg_inf(length):
-    """Test that sum handles negative infinity"""
+    """Test that sum handles negative infinity in the argument."""
     array = np.arange(length, dtype=np.float32)
     array[5] = -np.inf
 
@@ -79,7 +92,7 @@ def test_neg_inf(length):
 
 @pytest.mark.parametrize("length", [10, 1_000, 10_000])
 def test_nan(length):
-    """Test that sum handles NaN"""
+    """Test that sum handles NaN in the argument."""
     array = np.ones(length, dtype=np.float32)
     array[5] = np.nan
 
@@ -88,7 +101,7 @@ def test_nan(length):
 
 @pytest.mark.parametrize("length", [10, 1_000, 10_000])
 def test_mixed_inf(length):
-    """Test that sum handles mixing positive and negative infinity"""
+    """Test that sum handles mixing positive and negative infinity."""
     array = np.ones(length, dtype=np.float32)
     array[3] = np.inf
     array[5] = -np.inf
@@ -98,7 +111,7 @@ def test_mixed_inf(length):
 
 @pytest.mark.parametrize("length", [10, 1_000, 10_000])
 def test_mixed_nan(length):
-    """Test that sum handles multiple NaN/infinities"""
+    """Test that sum handles multiple NaN/infinities."""
     array = np.ones(length, dtype=np.float32)
     array[3] = np.nan
     array[5] = -np.inf
@@ -107,7 +120,7 @@ def test_mixed_nan(length):
 
 
 def test_overflow():
-    """Test that summing can overflow into infinity"""
+    """Test that summing can overflow into infinity."""
     array = np.array([2**126] * 8, dtype=np.float32)
 
     assert fm.sum(array) == np.inf
@@ -116,7 +129,11 @@ def test_overflow():
 @pytest.mark.filterwarnings("ignore:overflow encountered")
 @given(arrays(dtype=np.float32, shape=(100,)))
 def test_accuracy_small(array):
-    """Hypothesis tests for summing small arrays"""
+    """Fuzzing test for summing short arrays.
+
+    For shorter arrays, summing may use algorithms with low overhead cost.
+    This test focuses on those cases.
+    """
     assume(not np.isnan(np.float32(fsum(np.abs(array)))))
 
     if np.inf in array and -np.inf in array:
@@ -147,7 +164,11 @@ def test_accuracy_small(array):
 @pytest.mark.filterwarnings("ignore:overflow encountered")
 @given(arrays(dtype=np.float32, shape=(100_000,)))
 def test_accuracy_large(array):
-    """Hypothesis tests for summing large arrays"""
+    """Fuzzing test for summing long arrays.
+
+    For larger arrays, summing may use algorithms with high overhead cost but
+    low scaling costs. This test focuses on those cases.
+    """
     if np.inf in array and -np.inf in array:
         accurate = np.nan
     else:

@@ -11,6 +11,11 @@ def cumsum(
 ) -> np.ndarray:
     """Cumulatively sum the elements of an array.
 
+    Each element returned equals the cumulative sum of the input array, rounded
+    to floating point precision.
+
+    Results are not guaranteed if the cumulate sum overflows.
+
     Arguments
     ---
     array: a NumPy array

@@ -1,37 +1,33 @@
 # fast_math
 
-An accurate replacement for NumPy's `sum` and `cumsum`.
+A fast and accurate replacement for NumPy's `sum` and `cumsum`.
 
-## Floating-Point Rounding Errors
+## Floating-Point Arithmetic
 
-Floating-point addition is subject to **rounding error**, where the result loses some precision when stored in the fixed bits of a `np.float32` or `np.float64`. For a stylized example:
+Floating-point arithmetic is prone to errors, especially when multiple operations are performed in a row. Each individual operation can introduce a bit of rounding error, which accumulates over the course of the calculation. Usually, floating-point operations are good enough, and the rounding error is acceptably small. Unfortunately, not every use case can tolerate rounding error. For real-world examples of rounding error problems, check out [Julia Evan's *Examples of floating point problems*](https://jvns.ca/blog/2023/01/13/examples-of-floating-point-problems/).
+
+```python
+>>> import numpy as np
+>>> np.float32(2/3) * 3 == 2
+False
+```
+
+### Summation
+
+Summing a list of numbers is one of the most common calculations using many floating point operations in a row. Each addition can introduce a bit of rounding error along the way, especially when the numbers in the list vary by magnitude. Even when the numbers have similar magnitudes, summing a long list of numbers can end up adding a large accumulated sum to a much smaller value, rounding it mostly away.
 
 ```python
 >>> import numpy as np
 >>> array = np.array([2**24, 1, -2**24], dtype=np.float32)
->>> np.sum(array)
+>>> np.sum(array) # Should be 1
 0.0
 ```
 
-The correct answer is $2^{24} + 1 - 2^{24} = 1$, but the sum gets it wrong because 32-bit floats can't represent the number $2^{24} + 1$ (under IEEE 754). A 32-bit float only has 23 bits for significant digits, so a 32-bit float with a one in the $2^{24}$ place doesn't have the precision to store anything in a $2^0$ place. When adding one, floating-point math has to round it away: $2^{24} + 1 = 2^{24}$. These rounding errors accumulate in `numpy.sum`, which may return a value different from the 32-bit representation of the sum (see `numpy.sum`'s [Notes](https://numpy.org/doc/stable/reference/generated/numpy.sum.html)).
+Notably, NumPy's summation does not guarantee that its result is the closest floating-point number to the actual sum (See `numpy.sum`'s [Notes](https://numpy.org/doc/stable/reference/generated/numpy.sum.html)). This package aims to provide a replacement for `sum` and `cumsum` that calculate the accurate sum, and return the sum rounded to the closest floating-point number.
 
-### Rounding Errors in Big Data
+### `math.fsum` Performance
 
-Rounding error is a particular problem when working with a large number of floating-point numbers, as we do in modern scientific computing or machine learning. While the previous example was quite stylized, the same problem arises when working with a large number of values.
-
-```python
->>> array = np.arange(1_000_000, dtype=np.float32)
->>> np.sum(array)
-499999800000.0
->>> np.float32(np.sum(array, dtype=np.float64))
-499999500000.0
-```
-
-*Note*: In some cases, `numpy.sum` will use [pairwise summation](https://en.wikipedia.org/wiki/Pairwise_summation), which reduces the amount of rounding error. For example, summing $2^{25}$ ones will be accurate and summing $2^{25} + 1$ ones will only be off by one. However, when when Numpy doesn't use pairwise summation, summing $2^{25}$ ones gets stuck at $2^{24}$. `numpy.cumsum` is such an example.
-
-### `math.fsum` and Performance
-
-The Python standard library implements [`math.fsum`](https://docs.python.org/3/library/math.html#math.fsum), which calculates the sum of floating-point numbers accurately (up to possible error in the last digit). However, `fsum` is significantly slower than `numpy.sum`,  possibly 100-200 times slower, which may not be practical for scientific computing on large arrays.
+The Python standard library provides [`math.fsum`](https://docs.python.org/3/library/math.html#math.fsum), which mostly calculates the sum of floating-point numbers accurately (up to possible error in the last digit). Unfortunately, the accuracy of `fsum` comes at a significant performance price, running 100-200 times slower than NumPy's `sum`. That big slowdown makes a difference when summing a large array, the exact case when floating-point error is the worst!
 
 ## Installation
 
@@ -49,9 +45,11 @@ The Python standard library implements [`math.fsum`](https://docs.python.org/3/l
 
 ## Status
 
-`fast_math.sum` runs about five times slower than `numpy.sum`. It outperforms NumPy on small arrays and when summing over short axes, however it runs much slower when summing over long axes.
+`fast_math` only implements two functions, `sum` and `cumsum`, for 32-bit floats.
+- `fast_math.cumsum` runs 1-3x slower than the `numpy.cumsum`.
+- `fast_math.sum` runs about five times slower than `numpy.sum` on average. It outperforms NumPy on small arrays and when summing over short axes, but runs much slower when summing over long axes.
 
-Currently, `fast_math.sum` only supports summing over a single axis.
+`fast_math.sum` does not support summing over multiple axes at once.
 
 ## References
 

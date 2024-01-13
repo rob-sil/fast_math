@@ -6,7 +6,7 @@ import fast_math as fm
 
 
 def test_dtype():
-    # Test that the sum maintains the proper dtype
+    """Test that the sum maintains the desired dtype."""
     array = np.arange(1_000_000, dtype=np.float32)
 
     assert type(fm.sum(array)) == array.dtype
@@ -16,7 +16,7 @@ def test_dtype():
     "dtype", [np.bool_, np.float32, np.int8, np.int16, np.uint8, np.uint16]
 )
 def test_dtypes(dtype):
-    # Test supported array dtypes
+    """Test that sum can handle all supported array dtypes."""
     array = np.ones(1_000_000, dtype=dtype)
 
     assert np.sum(array, dtype=np.float32) == fm.sum(array, dtype=np.float32)
@@ -33,7 +33,7 @@ def test_dtypes(dtype):
     ],
 )
 def test_dtypes_unsafe(dtype):
-    # Test unsupported array dtypes
+    """Test that sum raises on unsupported dtypes."""
     array = np.ones(1_000_000, dtype=dtype)
 
     with pytest.raises(ValueError):
@@ -41,6 +41,11 @@ def test_dtypes_unsafe(dtype):
 
 
 def test_axis():
+    """Test summing over axes.
+
+    This test uses numbers that won't overflow np.sum. Those tests are found
+    with the accuracy tests.
+    """
     array = np.arange(10_000, dtype=np.float32).reshape((10, 20, -1))
 
     for axis in range(array.ndim):
@@ -51,6 +56,10 @@ def test_axis():
 
 
 def test_axis_empty():
+    """Test summing over the axes of an empty array.
+
+    Behavior should match np.sum for compatibility.
+    """
     array = np.array([], dtype=np.float32).reshape((-1, 5, 5))
 
     for axis in range(array.ndim):

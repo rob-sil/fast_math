@@ -10,7 +10,7 @@ import fast_math as fm
 
 
 def test_dtype():
-    """Test that cumsum maintains the proper dtype"""
+    """Test that cumsum maintains the proper dtype."""
     array = np.arange(1_000_000, dtype=np.float32)
 
     assert fm.cumsum(array).dtype == array.dtype
@@ -20,7 +20,7 @@ def test_dtype():
     "dtype", [np.bool_, np.float32, np.int8, np.int16, np.uint8, np.uint16]
 )
 def test_dtypes(dtype):
-    # Test supported array dtypes
+    """Test that cumsum can handle all supported array dtypes."""
     array = np.ones(1_000_000, dtype=dtype)
 
     assert fm.sum(array, dtype=np.float32) == fm.cumsum(array)[-1]
@@ -37,7 +37,7 @@ def test_dtypes(dtype):
     ],
 )
 def test_dtypes_unsafe(dtype):
-    # Test unsupported array dtypes
+    """Test that cumsum raises on unsupported dtypes."""
     array = np.ones(1_000_000, dtype=dtype)
 
     with pytest.raises(ValueError):
@@ -46,7 +46,7 @@ def test_dtypes_unsafe(dtype):
 
 @pytest.mark.parametrize("size", [10, 100, 1000])
 def test_small(size):
-    """Test cumulative sums where NumPy is accurate"""
+    """Test cumulative sums where NumPy is accurate."""
     array = np.arange(size, dtype=np.float32)
 
     assert_array_almost_equal(np.cumsum(array), fm.cumsum(array))
@@ -54,7 +54,7 @@ def test_small(size):
 
 @pytest.mark.parametrize("size", [1_000, 10_000, 100_000])
 def test_big(size):
-    """Test cumulative sums reach the proper sum for large numbers"""
+    """Test cumulative sums reach the proper sum for large numbers."""
     array = np.arange(size, dtype=np.float32)
 
     assert fm.cumsum(array)[-1] == np.float32(fsum(array))
@@ -62,7 +62,10 @@ def test_big(size):
 
 @pytest.mark.parametrize("size", [10, 100, 1_000, 10_000])
 def test_axis_small(size):
-    """Test cumulative sums along an axis"""
+    """Test cumulative sums along an axis.
+
+    The input data is simple enough that NumPy's cumsum will be accurate.
+    """
     array = np.arange(size, dtype=np.float32).reshape((10, -1))
 
     for axis in range(array.ndim):
@@ -73,7 +76,10 @@ def test_axis_small(size):
 
 
 def test_axis_empty():
-    """Test cumulative sums for an empty array."""
+    """Test cumsum over the axes of an empty array.
+
+    Behavior should match np.sum for compatibility.
+    """
     array = np.array([], dtype=np.float32).reshape((-1, 5, 5))
 
     for axis in range(array.ndim):
@@ -84,7 +90,7 @@ def test_axis_empty():
 
 
 def test_inf():
-    """Test that cumsum handles infinity"""
+    """Test that cumsum handles infinity in the argument."""
     array = np.array([1, 2, np.inf, 4], dtype=np.float32)
 
     accurate = np.cumsum(array)
@@ -94,7 +100,7 @@ def test_inf():
 
 
 def test_neg_inf():
-    """Test that cumsum handles negative infinity"""
+    """Test that cumsum handles negative infinity in the argument."""
     array = np.array([1, 2, -np.inf, 4], dtype=np.float32)
 
     accurate = np.cumsum(array)
@@ -104,7 +110,7 @@ def test_neg_inf():
 
 
 def test_nan():
-    """Test that cumsum handles NaN"""
+    """Test that cumsum handles NaN in the argument."""
     array = np.array([1, 2, np.nan, 4], dtype=np.float32)
 
     accurate = np.cumsum(array)
@@ -115,7 +121,7 @@ def test_nan():
 
 @pytest.mark.filterwarnings("ignore:invalid value encountered in accumulate")
 def test_mixed_inf():
-    """Test that cumsum handles mixing positive and negative infinity"""
+    """Test that cumsum handles mixing positive and negative infinity."""
     array = np.array([1, 2, -np.inf, 5, np.inf, 7], dtype=np.float32)
 
     accurate = np.cumsum(array)
@@ -125,7 +131,7 @@ def test_mixed_inf():
 
 
 def test_mixed_nan():
-    """Test that cumsum handles multiple NaN/infinities"""
+    """Test that cumsum handles multiple NaN/infinities."""
     array = np.array([1, 2, -np.inf, 5, np.nan, 7], dtype=np.float32)
 
     accurate = np.cumsum(array)
@@ -147,7 +153,11 @@ def test_overflow():
 
 @given(arrays(dtype=np.float32, shape=(10_000,)))
 def test_accuracy(array):
-    """Hypothesis tests that cumsum reaches the appropriate ending value"""
+    """Fuzzing test for cumsum.
+
+    Only the last element is tested, which should match the overall sum of the
+    input array. NumPy's cumsum is not necessarily an accurate benchmark.
+    """
     if np.inf in array and -np.inf in array:
         accurate = np.nan
     else:
