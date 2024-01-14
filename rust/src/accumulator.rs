@@ -98,7 +98,7 @@ impl Accumulator {
 
     /// How many numbers can be added without rounding error.
     fn max_count(&self) -> usize {
-        2_usize.pow(22)
+        2_usize.pow(f32::MANTISSA_BITS as u32 / 2 - 1)
     }
 }
 

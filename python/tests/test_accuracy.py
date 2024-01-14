@@ -1,9 +1,10 @@
-from math import fsum, isinf
+from math import fsum
 
 import numpy as np
 import pytest
 from hypothesis import assume, given
 from hypothesis.extra.numpy import arrays
+from hypothesis.strategies import integers
 from numpy.testing import assert_array_almost_equal
 
 import fast_math as fm
@@ -18,51 +19,55 @@ def test_float32():
 
     array = np.array([1, 2**24, 0, -(2**24)], dtype=np.float32)
 
-    accurate = np.float32(fsum(array))
-    assert accurate == fm.sum(array)
+    assert 1 == fm.sum(array)
 
 
-def test_ascending():
+@pytest.mark.parametrize("N", [1, 10, 1_000, 1_000_000, 100_000_000])
+def test_ascending(N):
     """Test adding a sequence of ascending numbers
 
     When the array is ascending, each additional number grows along with the
     running sum.
     """
-    array = np.arange(1_000_000, dtype=np.float32)
+    array = np.arange(N, dtype=np.float32)
 
-    accurate = np.float32(fsum(array))
+    accurate = np.float32((N * (N - 1)) // 2)
     assert accurate == fm.sum(array)
 
 
-def test_descending():
+@pytest.mark.parametrize("N", [1, 10, 1_000, 1_000_000, 100_000_000])
+def test_descending(N):
     """Test adding a sequence of descending numbers
 
     When the array is descending, each additional number gets smaller and may
     get to a point where the remaining numbers are all within the rounding
     error of the current value in 32 bits.
     """
-    array = np.arange(1_000_000, dtype=np.float32)[::-1]
+    array = np.arange(N, dtype=np.float32)[::-1]
 
-    accurate = np.float32(fsum(array))
+    accurate = np.float32((N * (N - 1)) / 2)
     assert accurate == fm.sum(array)
 
 
 @pytest.mark.parametrize("ndims", [1, 2, 3, 4])
 def test_dimensions(ndims):
     """Test summing multi-dimensional arrays."""
-    shape = tuple([5] * (ndims - 1) + [-1])
-    array = np.arange(1_000_000, dtype=np.float32).reshape(shape)
+    N = 1_000_000
 
-    accurate = np.float32(fsum(array.flatten()))
+    shape = tuple([5] * (ndims - 1) + [-1])
+    array = np.arange(N, dtype=np.float32).reshape(shape)
+
+    accurate = np.float32(N * (N - 1) / 2)
     assert accurate == fm.sum(array)
 
 
-def test_axis():
+@pytest.mark.parametrize("first_dimension", [1, 2, 5, 1_000])
+def test_axis(first_dimension):
     """Test summing along an axis."""
-    array = np.arange(2_000_000, dtype=np.float32).reshape((2, -1))
+    array = np.arange(2_000_000, dtype=np.float32).reshape((first_dimension, -1))
 
     accurate = np.array(
-        [fsum(array[0]), fsum(array[1])],
+        [fsum(array[i]) for i in range(first_dimension)],
         dtype=array.dtype,
     )
 
@@ -126,7 +131,21 @@ def test_overflow():
     assert fm.sum(array) == np.inf
 
 
+@given(seed=integers(min_value=0))
+def test_ordering(seed):
+    """Test randomly-ordered sequence of consecutive numbers."""
+    N = 1_000_000
+    array = np.arange(N, dtype=np.float32)
+
+    rng = np.random.default_rng(seed)
+    rng.shuffle(array)
+
+    accurate = np.float32((N * (N - 1)) / 2)
+    assert accurate == fm.sum(array)
+
+
 @pytest.mark.filterwarnings("ignore:overflow encountered")
+@pytest.mark.filterwarnings("ignore:invalid value encountered in reduce")
 @given(arrays(dtype=np.float32, shape=(100,)))
 def test_accuracy_small(array):
     """Fuzzing test for summing short arrays.
@@ -134,34 +153,39 @@ def test_accuracy_small(array):
     For shorter arrays, summing may use algorithms with low overhead cost.
     This test focuses on those cases.
     """
-    assume(not np.isnan(np.float32(fsum(np.abs(array)))))
-
-    if np.inf in array and -np.inf in array:
-        accurate = np.nan
-    else:
-        accurate = np.float32(fsum(array))
-
-    # Catch overflow
-    if np.isfinite(np.array(array)).all():
-        assume(not np.isnan(accurate))
-
     result = fm.sum(array)
+    np_result = np.sum(array)
 
-    if np.isnan(accurate):
+    # If both infinities are present the the result is NAN
+    if np.inf in array and -np.inf in array:
         assert np.isnan(result)
-    elif np.isinf(accurate):
-        assert np.isinf(result)
-    elif result != accurate:
-        assert not np.isnan(result) and not np.isinf(result)
+
+    # Overflow could yield NAN
+    elif np.inf in array or -np.inf in array:
+        assert not np.isfinite(result)
+
+    # Undefined if np.sum is not finite
+    elif not np.isfinite(np_result):
+        pass
+
+    # Otherwise, compare to math.fsum
+    else:
+        fsum_result = np.float32(fsum(array))
+
+        assume(np.isfinite(fsum_result))
+
+        assert np.isfinite(result)
 
         # fsum can be inaccurate on the last bit
-        base = max(np.abs(result), np.abs(accurate))
-        error_exp = int(np.floor(np.log2(base))) - 23
+        if result != fsum_result:
+            base = max(np.abs(result), np.abs(fsum_result))
+            error_exp = int(np.floor(np.log2(base))) - 23
 
-        assert np.abs(result - accurate) <= 2**error_exp
+            assert np.abs(result - fsum_result) <= 2**error_exp
 
 
 @pytest.mark.filterwarnings("ignore:overflow encountered")
+@pytest.mark.filterwarnings("ignore:invalid value encountered in reduce")
 @given(arrays(dtype=np.float32, shape=(100_000,)))
 def test_accuracy_large(array):
     """Fuzzing test for summing long arrays.
@@ -169,29 +193,35 @@ def test_accuracy_large(array):
     For larger arrays, summing may use algorithms with high overhead cost but
     low scaling costs. This test focuses on those cases.
     """
-    if np.inf in array and -np.inf in array:
-        accurate = np.nan
-    else:
-        accurate = np.float32(fsum(array))
-
-    # Catch overflow
-    if np.isfinite(np.array(array)).all():
-        assume(not np.isnan(accurate))
-
     result = fm.sum(array)
+    np_result = np.sum(array)
 
-    if np.isnan(accurate):
+    # If both infinities are present the the result is NAN
+    if np.inf in array and -np.inf in array:
         assert np.isnan(result)
-    elif np.isinf(accurate):
-        assert np.isinf(result)
-    elif result != accurate:
-        assert not np.isnan(result) and not np.isinf(result)
+
+    # Overflow could yield NAN
+    elif np.inf in array or -np.inf in array:
+        assert not np.isfinite(result)
+
+    # Undefined if np.sum is not finite
+    elif not np.isfinite(np_result):
+        pass
+
+    # Otherwise, compare to math.fsum
+    else:
+        fsum_result = np.float32(fsum(array))
+
+        assume(np.isfinite(fsum_result))
+
+        assert np.isfinite(result)
 
         # fsum can be inaccurate on the last bit
-        base = max(np.abs(result), np.abs(accurate))
-        error_exp = int(np.floor(np.log2(base))) - 23
+        if result != fsum_result:
+            base = max(np.abs(result), np.abs(fsum_result))
+            error_exp = int(np.floor(np.log2(base))) - 23
 
-        assert np.abs(result - accurate) <= 2**error_exp
+            assert np.abs(result - fsum_result) <= 2**error_exp
 
 
 def test_multistep_rounding():

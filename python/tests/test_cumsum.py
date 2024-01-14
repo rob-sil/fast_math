@@ -155,21 +155,14 @@ def test_overflow():
 def test_accuracy(array):
     """Fuzzing test for cumsum.
 
-    Only the last element is tested, which should match the overall sum of the
-    input array. NumPy's cumsum is not necessarily an accurate benchmark.
+    Test against fast_math.sum.
     """
-    if np.inf in array and -np.inf in array:
-        accurate = np.nan
-    else:
-        accurate = np.float32(fsum(array))
+    result = fm.cumsum(array)
 
-    # Catch overflow
-    if np.isfinite(np.array(array)).all():
-        assume(not np.isnan(accurate))
+    accurate = np.array(
+        [fm.sum(array[: length + 1]) for length in range(len(array))], dtype=np.float32
+    )
 
-    result = fm.cumsum(array)[-1]
+    assume(np.isfinite(accurate[-1]))
 
-    if np.isnan(accurate):
-        assert np.isnan(result)
-    else:
-        assert result == accurate
+    assert (accurate == result).all()
